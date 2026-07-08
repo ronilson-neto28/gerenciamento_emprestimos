@@ -2,16 +2,21 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use MongoDB\Laravel\Auth\User as Authenticatable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    protected $connection = 'mongodb';
+    protected $collection = 'users';
+    protected $primaryKey = '_id';
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     /**
      * The attributes that are mass assignable.
@@ -22,6 +27,13 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'phone',
+        'role',
+        'created_by',
+        'remember_token',
+        'two_factor_code',
+        'two_factor_channel',
+        'two_factor_expires_at',
     ];
 
     /**
@@ -44,6 +56,17 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'two_factor_expires_at' => 'datetime',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return (string) ($this->role ?? '') === 'admin';
+    }
+
+    public function isCobrador(): bool
+    {
+        return (string) ($this->role ?? '') === 'cobrador';
     }
 }
