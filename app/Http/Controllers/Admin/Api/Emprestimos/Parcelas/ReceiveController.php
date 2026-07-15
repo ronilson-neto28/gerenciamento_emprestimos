@@ -22,6 +22,7 @@ class ReceiveController extends Controller
         $loan = Emprestimo::query()->findOrFail((string) ($parcela['emprestimo_id'] ?? ''));
         Gate::authorize('access-emprestimo', $loan);
         $loanId = (string) ($loan->id ?? $loan->getKey() ?? '');
+        $ownerId = trim((string) ($loan['owner_id'] ?? ''));
         $loanIdValues = [$loanId];
         if (preg_match('/^[a-f0-9]{24}$/i', $loanId)) {
             $loanIdValues[] = new ObjectId($loanId);
@@ -77,6 +78,7 @@ class ReceiveController extends Controller
             'parcela_id' => (string) ($parcela->id ?? $parcela->getKey() ?? ''),
             'emprestimo_id' => $loanId,
             'cliente_id' => (string) ($loan['cliente_id'] ?? ''),
+            'owner_id' => $ownerId,
             'user_id' => $authUserId,
             'valor_recebido' => $service->formatMoney($amountCents),
             'valor_recebido_cents' => $amountCents,
@@ -115,6 +117,7 @@ class ReceiveController extends Controller
 
             Parcela::create([
                 'emprestimo_id' => $loanId,
+                'owner_id' => $ownerId,
                 'numero' => $nextNumber,
                 'vencimento' => $nextDue->format('Y-m-d'),
                 'amortizacao' => $service->formatMoney($newAmortCents),
@@ -171,6 +174,7 @@ class ReceiveController extends Controller
 
             Parcela::create([
                 'emprestimo_id' => $loanId,
+                'owner_id' => $ownerId,
                 'numero' => $nextNumber,
                 'vencimento' => $nextDue->format('Y-m-d'),
                 'amortizacao' => $service->formatMoney($saldoRestanteCents),

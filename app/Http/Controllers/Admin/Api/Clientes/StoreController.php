@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\Clientes\StoreClienteRequest;
 use App\Models\Cliente;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\JsonResponse;
+use App\Support\AdminAccess;
 
 class StoreController extends Controller
 {
@@ -20,6 +21,7 @@ class StoreController extends Controller
             $data['status'] = 'ativo';
         }
 
+        $data['owner_id'] = AdminAccess::resolveOwnerId($request->user());
         $data['created_by'] = (string) ($request->user()?->id ?? $request->user()?->getKey() ?? '');
 
         $cliente = Cliente::create($data);

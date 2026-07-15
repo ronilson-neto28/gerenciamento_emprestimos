@@ -13,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin.basic' => \App\Http\Middleware\AdminBasicAuth::class,
+            'admin.delete' => \App\Http\Middleware\EnsureAdminForDeletion::class,
+            'admin.finance' => \App\Http\Middleware\EnsureAdminForFinanceReports::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

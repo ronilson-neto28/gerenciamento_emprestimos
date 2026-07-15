@@ -22,6 +22,7 @@ class UpdateController extends Controller
         $loanId = (string) ($loan->id ?? $loan->getKey() ?? '');
         $data = $request->validated();
         $authUser = $request->user();
+        $ownerId = trim((string) ($loan['owner_id'] ?? AdminAccess::resolveOwnerId($authUser)));
 
         if ($loanId === '') {
             return response()->json(['ok' => false, 'message' => 'ID do empréstimo inválido.'], 500);
@@ -117,6 +118,7 @@ class UpdateController extends Controller
             }
 
             $payload = [
+                'owner_id' => $ownerId,
                 'vencimento' => (string) $installment['vencimento'],
                 'amortizacao' => (string) $installment['amortizacao'],
                 'amortizacao_cents' => (int) $installment['amortizacao_cents'],
@@ -161,6 +163,7 @@ class UpdateController extends Controller
 
         $loan->fill([
             'cliente_id' => $clienteModel?->getKey(),
+            'owner_id' => $ownerId,
             'cliente' => $clienteName,
             'valor' => $service->formatMoney($principalCents),
             'valor_cents' => $principalCents,

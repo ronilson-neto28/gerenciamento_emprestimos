@@ -22,6 +22,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\VerifyRegistrationCodeController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -148,6 +149,9 @@ Route::prefix('assets/admin')->name('assets.admin.')->group(function () {
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/register/verify', [VerifyRegistrationCodeController::class, 'create'])->name('register.verify');
+    Route::post('/register/verify', [VerifyRegistrationCodeController::class, 'store'])->name('register.verify.store');
+    Route::post('/register/verify/resend', [VerifyRegistrationCodeController::class, 'resend'])->name('register.verify.resend');
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 
@@ -166,25 +170,25 @@ Route::prefix('admin')->middleware('auth')->name('admin.')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard')->middleware('can:view-dashboard');
     Route::get('/clientes', ClienteController::class)->name('clientes');
     Route::get('/emprestimos', EmprestimoController::class)->name('emprestimos');
-    Route::get('/relatorios', RelatorioController::class)->name('relatorios')->middleware('can:view-relatorios');
+    Route::get('/relatorios', RelatorioController::class)->name('relatorios')->middleware(['admin.finance', 'can:view-relatorios']);
     Route::get('/cobradores', [CobradorController::class, 'index'])->name('cobradores')->middleware('can:manage-cobradores');
     Route::post('/cobradores', [CobradorController::class, 'store'])->name('cobradores.store')->middleware('can:manage-cobradores');
-    Route::get('/financeiro', FinanceiroController::class)->name('financeiro')->middleware('can:view-financeiro');
+    Route::get('/financeiro', FinanceiroController::class)->name('financeiro')->middleware(['admin.finance', 'can:view-financeiro']);
 });
 
 Route::prefix('admin/api')->middleware('auth')->name('admin.api.')->group(function () {
     Route::post('/clientes', ClientesStoreController::class)->name('clientes.store')->middleware('can:create-clientes');
     Route::get('/clientes/{id}', ClientesShowController::class)->name('clientes.show');
     Route::patch('/clientes/{id}', ClientesUpdateController::class)->name('clientes.update');
-    Route::delete('/clientes/{id}', ClientesDestroyController::class)->name('clientes.destroy')->middleware('can:delete-clientes');
+    Route::delete('/clientes/{id}', ClientesDestroyController::class)->name('clientes.destroy')->middleware(['admin.delete', 'can:delete-clientes']);
 
     Route::post('/emprestimos', EmprestimosStoreController::class)->name('emprestimos.store')->middleware('can:create-emprestimos');
     Route::get('/emprestimos/{id}', EmprestimosShowController::class)->name('emprestimos.show');
     Route::patch('/emprestimos/{id}', EmprestimosUpdateController::class)->name('emprestimos.update');
-    Route::delete('/emprestimos/{id}', EmprestimosDestroyController::class)->name('emprestimos.destroy')->middleware('can:delete-emprestimos');
+    Route::delete('/emprestimos/{id}', EmprestimosDestroyController::class)->name('emprestimos.destroy')->middleware(['admin.delete', 'can:delete-emprestimos']);
     Route::get('/emprestimos/{id}/parcelas', EmprestimosParcelasIndexController::class)->name('emprestimos.parcelas.index');
     Route::post('/emprestimos/{id}/parcelas/sync', EmprestimosParcelasSyncController::class)->name('emprestimos.parcelas.sync');
     Route::post('/parcelas/{id}/receber', EmprestimosParcelasReceiveController::class)->name('parcelas.receber');
 
-    Route::post('/financeiro/lancamentos', FinanceiroLancamentosStoreController::class)->name('financeiro.lancamentos.store')->middleware('can:manage-financeiro');
+    Route::post('/financeiro/lancamentos', FinanceiroLancamentosStoreController::class)->name('financeiro.lancamentos.store')->middleware(['admin.finance', 'can:manage-financeiro']);
 });

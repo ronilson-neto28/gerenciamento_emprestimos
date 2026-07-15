@@ -29,7 +29,12 @@ class User extends Authenticatable
         'password',
         'phone',
         'role',
+        'status',
+        'owner_id',
         'created_by',
+        'email_verified_at',
+        'verification_code',
+        'verification_code_expires_at',
         'remember_token',
         'two_factor_code',
         'two_factor_channel',
@@ -44,6 +49,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'verification_code',
     ];
 
     /**
@@ -56,6 +62,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'verification_code_expires_at' => 'datetime',
             'two_factor_expires_at' => 'datetime',
         ];
     }
@@ -68,5 +75,22 @@ class User extends Authenticatable
     public function isCobrador(): bool
     {
         return (string) ($this->role ?? '') === 'cobrador';
+    }
+
+    public function ownerId(): string
+    {
+        return trim((string) ($this->owner_id ?: $this->id ?: $this->getKey() ?: ''));
+    }
+
+    public function isActive(): bool
+    {
+        $status = trim((string) ($this->status ?? ''));
+
+        return $status === '' || $status === 'ativo';
+    }
+
+    public function isPending(): bool
+    {
+        return trim((string) ($this->status ?? '')) === 'pendente';
     }
 }

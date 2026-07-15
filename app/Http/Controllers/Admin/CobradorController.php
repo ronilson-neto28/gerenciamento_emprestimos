@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Users\StoreCobradorRequest;
 use App\Models\User;
+use App\Support\AdminAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -17,10 +18,7 @@ class CobradorController extends Controller
     {
         Gate::authorize('manage-cobradores');
 
-        $cobradores = User::query()
-            ->where('role', 'cobrador')
-            ->orderBy('name')
-            ->get();
+        $cobradores = AdminAccess::cobradoresCreatedBy($request->user());
 
         return view('admin.cobradores', [
             'cobradores' => $cobradores,
@@ -34,7 +32,7 @@ class CobradorController extends Controller
         $data = $request->validated();
         $email = mb_strtolower(trim((string) $data['email']));
 
-        if (User::query()->where('email', $email)->exists()) {
+        if (User::withoutGlobalScopes()->where('email', $email)->exists()) {
             return back()
                 ->withInput()
                 ->withErrors(['email' => 'Já existe um usuário cadastrado com este e-mail.']);
@@ -48,7 +46,10 @@ class CobradorController extends Controller
             'phone' => trim((string) ($data['phone'] ?? '')),
             'password' => Hash::make((string) $data['password']),
             'role' => 'cobrador',
+            'status' => 'ativo',
+            'owner_id' => $request->user()?->ownerId(),
             'created_by' => $creatorId,
+            'email_verified_at' => now(),
             'two_factor_channel' => 'email',
         ]);
 

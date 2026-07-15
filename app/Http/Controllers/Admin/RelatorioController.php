@@ -38,12 +38,14 @@ class RelatorioController extends Controller
         }
 
         $isAdmin = AdminAccess::isAdmin($authUser);
+        $ownerId = AdminAccess::resolveOwnerId($authUser);
         $filterUserId = $isAdmin
             ? trim((string) $request->query('cobrador', ''))
             : (string) ($authUser?->id ?? $authUser?->getKey() ?? '');
 
         $cobradores = User::query()
             ->where('role', 'cobrador')
+            ->where('owner_id', $ownerId)
             ->orderBy('name')
             ->get();
 
@@ -68,6 +70,7 @@ class RelatorioController extends Controller
         }
 
         $usersById = User::query()
+            ->where('owner_id', $ownerId)
             ->whereIn('_id', $userIds)
             ->get()
             ->keyBy(fn ($user) => (string) ($user->id ?? $user->getKey() ?? ''));

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use MongoDB\Laravel\Eloquent\Model;
 
 class Recebimento extends Model
 {
-    use HasFactory;
+    use BelongsToTenant, HasFactory;
 
     protected $connection = 'mongodb';
     protected $collection = 'recebimentos';
@@ -19,6 +20,7 @@ class Recebimento extends Model
         'parcela_id',
         'emprestimo_id',
         'cliente_id',
+        'owner_id',
         'user_id',
         'valor_recebido',
         'valor_recebido_cents',

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use MongoDB\Laravel\Eloquent\Model;
 
 class Parcela extends Model
 {
-    use HasFactory;
+    use BelongsToTenant, HasFactory;
 
     protected $connection = 'mongodb';
     protected $collection = 'parcelas';
@@ -17,6 +18,7 @@ class Parcela extends Model
 
     protected $fillable = [
         'emprestimo_id',
+        'owner_id',
         'numero',
         'vencimento',
         'amortizacao',

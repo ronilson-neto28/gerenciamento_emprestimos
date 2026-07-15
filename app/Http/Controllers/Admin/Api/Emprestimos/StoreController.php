@@ -22,6 +22,7 @@ class StoreController extends Controller
         $data = $request->validated();
         $authUser = $request->user();
         $authUserId = (string) ($authUser?->id ?? $authUser?->getKey() ?? '');
+        $ownerId = AdminAccess::resolveOwnerId($authUser);
 
         $principalCents = $service->parseMoneyToCents((string) $data['valor_emprestimo']);
         $taxaPercent = $service->parsePercent((string) ($data['taxa_juros'] ?? ''));
@@ -64,6 +65,7 @@ class StoreController extends Controller
 
         $loan = new Emprestimo([
             'cliente_id' => $clienteModel?->getKey(),
+            'owner_id' => $ownerId,
             'created_by' => $authUserId,
             'cliente' => $clienteName,
             'valor' => $service->formatMoney($principalCents),
@@ -107,6 +109,7 @@ class StoreController extends Controller
                 'emprestimo_id' => $loanId,
                 'numero' => $numero,
             ], [
+                'owner_id' => $ownerId,
                 'vencimento' => (string) $installment['vencimento'],
                 'amortizacao' => (string) $installment['amortizacao'],
                 'amortizacao_cents' => (int) $installment['amortizacao_cents'],

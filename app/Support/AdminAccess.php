@@ -16,6 +16,11 @@ class AdminAccess
         return $user instanceof User && $user->isAdmin();
     }
 
+    public static function resolveOwnerId(?User $user): string
+    {
+        return $user instanceof User ? $user->ownerId() : '';
+    }
+
     public static function visibleLoanQuery(?User $user): Builder
     {
         $query = Emprestimo::query();
@@ -63,12 +68,17 @@ class AdminAccess
 
     public static function canAccessLoan(?User $user, Emprestimo $loan): bool
     {
-        if (self::isAdmin($user)) {
-            return true;
-        }
-
         if (!$user instanceof User) {
             return false;
+        }
+
+        $ownerId = self::resolveOwnerId($user);
+        if ($ownerId === '' || trim((string) ($loan['owner_id'] ?? '')) !== $ownerId) {
+            return false;
+        }
+
+        if (self::isAdmin($user)) {
+            return true;
         }
 
         $userId = (string) ($user->id ?? $user->getKey() ?? '');
@@ -90,12 +100,17 @@ class AdminAccess
 
     public static function canAccessClient(?User $user, Cliente $cliente): bool
     {
-        if (self::isAdmin($user)) {
-            return true;
-        }
-
         if (!$user instanceof User) {
             return false;
+        }
+
+        $ownerId = self::resolveOwnerId($user);
+        if ($ownerId === '' || trim((string) ($cliente['owner_id'] ?? '')) !== $ownerId) {
+            return false;
+        }
+
+        if (self::isAdmin($user)) {
+            return true;
         }
 
         $userId = (string) ($user->id ?? $user->getKey() ?? '');
@@ -118,8 +133,14 @@ class AdminAccess
             return null;
         }
 
+        $ownerId = self::resolveOwnerId(auth()->user());
+        if ($ownerId === '') {
+            return null;
+        }
+
         return User::query()
             ->where('role', 'cobrador')
+            ->where('owner_id', $ownerId)
             ->where(function ($query) use ($term) {
                 $query->orWhere('email', $term)
                     ->orWhere('phone', $term)
@@ -132,8 +153,10 @@ class AdminAccess
     {
         $query = User::query()->where('role', 'cobrador')->orderBy('name');
 
-        if (!self::isAdmin($user) && $user instanceof User) {
-            $query->where('created_by', (string) ($user->id ?? $user->getKey() ?? ''));
+        $ownerId = self::resolveOwnerId($user);
+
+        if ($ownerId !== '') {
+            $query->where('owner_id', $ownerId);
         }
 
         return $query->get();

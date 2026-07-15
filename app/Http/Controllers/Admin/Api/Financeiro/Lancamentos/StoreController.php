@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Api\Financeiro\Lancamentos;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Financeiro\StoreLancamentoFinanceiroRequest;
 use App\Models\LancamentoFinanceiro;
+use App\Support\AdminAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -24,6 +25,7 @@ class StoreController extends Controller
             'date' => $data['date'],
             'description' => $data['description'] ?? null,
             'category' => $data['category'] ?? null,
+            'owner_id' => AdminAccess::resolveOwnerId($request->user()),
         ]);
 
         return response()->json([

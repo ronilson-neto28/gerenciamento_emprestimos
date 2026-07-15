@@ -17,6 +17,7 @@ class SyncController extends Controller
         $loan = Emprestimo::query()->findOrFail($id);
         Gate::authorize('access-emprestimo', $loan);
         $loanId = (string) ($loan->id ?? $loan->getKey() ?? '');
+        $ownerId = trim((string) ($loan['owner_id'] ?? ''));
         $loanIdValues = [$loanId];
 
         if (preg_match('/^[a-f0-9]{24}$/i', $loanId)) {
@@ -105,6 +106,7 @@ class SyncController extends Controller
                 'emprestimo_id' => $loanId,
                 'numero' => $numero,
             ], [
+                'owner_id' => $ownerId,
                 'vencimento' => (string) ($installment['vencimento'] ?? ''),
                 'amortizacao' => (string) ($installment['amortizacao'] ?? ''),
                 'amortizacao_cents' => (int) ($installment['amortizacao_cents'] ?? 0),

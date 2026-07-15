@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use MongoDB\Laravel\Eloquent\Model;
 
 class LancamentoFinanceiro extends Model
 {
-    use HasFactory;
+    use BelongsToTenant, HasFactory;
 
     protected $connection = 'mongodb';
     protected $collection = 'lancamentos_financeiro';
@@ -21,6 +22,6 @@ class LancamentoFinanceiro extends Model
         'date',
         'description',
         'category',
+        'owner_id',
     ];
 }
-
