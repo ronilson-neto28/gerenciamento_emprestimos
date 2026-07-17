@@ -16,7 +16,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) gd intl mbstring pdo pdo_mysql zip
 
-RUN pecl install mongodb \
+RUN pecl download mongodb \
+    && tar -xzf mongodb-*.tgz \
+    && cd mongodb-*/ \
+    && phpize \
+    && ./configure --with-mongodb-ssl=openssl \
+    && make \
+    && make install \
     && docker-php-ext-enable mongodb
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
