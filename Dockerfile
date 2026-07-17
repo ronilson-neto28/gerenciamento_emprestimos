@@ -21,3 +21,11 @@ RUN pecl install mongodb \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
+
+COPY . .
+
+RUN composer install --no-dev --optimize-autoloader
+
+RUN chown -R www-data:www-data /var/www/html
+
+CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-80}"]
