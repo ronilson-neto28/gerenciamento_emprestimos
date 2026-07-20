@@ -7,6 +7,7 @@ use App\Models\Emprestimo;
 use App\Models\User;
 use App\Support\AdminAccess;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,6 +25,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('app.env') === 'production' || str_contains((string) config('app.url'), 'https')) {
+            URL::forceScheme('https');
+        }
+
         Gate::before(function (User $user, string $ability) {
             return $user->isAdmin() ? true : null;
         });
