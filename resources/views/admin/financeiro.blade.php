@@ -234,7 +234,7 @@
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/js/admin/financeiro.js'])
         @else
-            <script src="{{ route('assets.admin.financeiro', [], false) }}" defer></script>
+            <script src="{{ route('assets.admin.financeiro', ['v' => filemtime(resource_path('js/admin/financeiro.js'))]) }}" defer></script>
         @endif
     @endpush
 
