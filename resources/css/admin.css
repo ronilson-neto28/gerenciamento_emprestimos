@@ -815,61 +815,21 @@ a {
     background: transparent;
 }
 
-.page-admin-cobradores .sidebar {
-    background: rgba(255, 255, 255, 0.52);
-    border-right: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 18px 0 46px rgba(76, 95, 180, 0.08);
-    backdrop-filter: blur(10px);
+.page-admin-cobradores .main {
+    padding: 32px;
 }
 
-.page-admin-cobradores .brand,
-.page-admin-cobradores .nav-link,
-.page-admin-cobradores .sidebar-user-name,
 .page-admin-cobradores .page-title h1,
 .page-admin-cobradores .card-header h2 {
     color: #273449;
 }
 
-.page-admin-cobradores .brand span,
-.page-admin-cobradores .nav-link.active,
-.page-admin-cobradores .nav-link:hover,
-.page-admin-cobradores .badge {
-    color: #5d72eb;
-}
-
-.page-admin-cobradores .nav-label,
-.page-admin-cobradores .sidebar-user-role,
 .page-admin-cobradores .page-title p,
 .page-admin-cobradores .card-subtitle,
 .page-admin-cobradores .activity-time,
 .page-admin-cobradores .projects-table th,
 .page-admin-cobradores .empty-state {
     color: #79849b;
-}
-
-.page-admin-cobradores .nav-link {
-    background: rgba(255, 255, 255, 0.76);
-    border: 1px solid rgba(230, 235, 247, 0.95);
-    box-shadow: 0 10px 20px rgba(171, 180, 214, 0.08);
-}
-
-.page-admin-cobradores .nav-link.active,
-.page-admin-cobradores .nav-link:hover {
-    background: rgba(116, 136, 246, 0.12);
-    border-color: rgba(125, 143, 249, 0.24);
-}
-
-.page-admin-cobradores .sidebar-user-card,
-.page-admin-cobradores .topbar-user-chip,
-.page-admin-cobradores .btn-secondary {
-    background: rgba(255, 255, 255, 0.74);
-    border-color: rgba(230, 235, 247, 0.95);
-    color: #49566f;
-    box-shadow: 0 12px 24px rgba(171, 180, 214, 0.08);
-}
-
-.page-admin-cobradores .main {
-    padding: 32px;
 }
 
 .page-admin-cobradores .card {
@@ -885,6 +845,7 @@ a {
 
 .page-admin-cobradores .badge {
     background: rgba(116, 136, 246, 0.12);
+    color: #5d72eb;
 }
 
 .page-admin-cobradores .projects-table td {
