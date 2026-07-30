@@ -69,7 +69,7 @@ class RegistrationVerificationService
             $resend = \Resend::client($apiKey);
 
             $resend->emails->send([
-                'from' => 'onboarding@resend.dev',
+                'from' => 'nao-responda@kdgestaows.com.br',
                 'to' => [$user->email],
                 'subject' => 'Código de Verificação - Sistema de Empréstimos',
                 'html' => '<p>Seu código de ativação é: <strong>' . e($code) . '</strong></p>',
