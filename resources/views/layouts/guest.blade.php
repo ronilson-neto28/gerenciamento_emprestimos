@@ -55,5 +55,10 @@
             </section>
         </section>
     </main>
+    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+        @vite(['resources/js/admin/admin.js'])
+    @else
+        <script src="{{ route('assets.admin.admin_js', [], false) }}" defer></script>
+    @endif
 </body>
 </html>

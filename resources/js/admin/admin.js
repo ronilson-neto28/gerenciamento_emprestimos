@@ -196,4 +196,103 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         closeAllSelectMenus();
     });
+
+    const initPasswordToggles = () => {
+        document.querySelectorAll('.js-password-toggle').forEach((toggle) => {
+            const button = toggle instanceof HTMLButtonElement ? toggle : null;
+            if (!button) {
+                return;
+            }
+
+            const targetId = button.dataset.target || '';
+            if (!targetId) {
+                return;
+            }
+
+            const input = document.getElementById(targetId);
+            if (!(input instanceof HTMLInputElement)) {
+                return;
+            }
+
+            const applyState = (isOn) => {
+                input.type = isOn ? 'text' : 'password';
+                button.classList.toggle('is-on', isOn);
+                button.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+                button.setAttribute('aria-label', isOn ? 'Ocultar senha' : 'Mostrar senha');
+            };
+
+            applyState(input.type === 'text');
+
+            button.addEventListener('click', () => {
+                applyState(input.type === 'password');
+                input.focus({ preventScroll: true });
+            });
+        });
+    };
+
+    const initRegisterPasswordValidation = () => {
+        const passwordInput = document.getElementById('password');
+        const confirmationInput = document.getElementById('password_confirmation');
+
+        if (!(passwordInput instanceof HTMLInputElement) || !(confirmationInput instanceof HTMLInputElement)) {
+            return;
+        }
+
+        const rulesList = document.querySelector('[data-password-rules]');
+        const mismatchHelp = document.getElementById('password_mismatch_help');
+
+        const evaluatePassword = (value) => {
+            const text = String(value || '');
+            return {
+                length: text.length >= 8,
+                upper: /[A-Z]/.test(text),
+                lower: /[a-z]/.test(text),
+                special: /[^A-Za-z0-9]/.test(text),
+            };
+        };
+
+        const syncRules = () => {
+            if (!(rulesList instanceof Element)) {
+                return;
+            }
+
+            const results = evaluatePassword(passwordInput.value);
+            rulesList.querySelectorAll('[data-rule]').forEach((ruleItem) => {
+                const item = ruleItem instanceof HTMLElement ? ruleItem : null;
+                if (!item) {
+                    return;
+                }
+
+                const key = item.dataset.rule || '';
+                item.classList.toggle('is-valid', !!results[key]);
+            });
+        };
+
+        const syncConfirmation = () => {
+            const confirmationValue = confirmationInput.value;
+            const passwordValue = passwordInput.value;
+            const hasSomething = confirmationValue.length > 0 || passwordValue.length > 0;
+            const mismatch = hasSomething && confirmationValue.length > 0 && confirmationValue !== passwordValue;
+
+            confirmationInput.classList.toggle('is-invalid', mismatch);
+            confirmationInput.setAttribute('aria-invalid', mismatch ? 'true' : 'false');
+
+            if (mismatchHelp instanceof HTMLElement) {
+                mismatchHelp.hidden = !mismatch;
+            }
+        };
+
+        const syncAll = () => {
+            syncRules();
+            syncConfirmation();
+        };
+
+        passwordInput.addEventListener('input', syncAll);
+        confirmationInput.addEventListener('input', syncAll);
+
+        syncAll();
+    };
+
+    initPasswordToggles();
+    initRegisterPasswordValidation();
 });

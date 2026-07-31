@@ -25,7 +25,7 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'string', 'email', 'max:180'],
             'phone' => ['nullable', 'string', 'max:50'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'password' => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->symbols()],
         ]);
 
         $email = mb_strtolower(trim((string) $request->input('email')));
