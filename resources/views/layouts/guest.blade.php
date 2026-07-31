@@ -11,7 +11,8 @@
         <link rel="stylesheet" href="{{ route('assets.admin.css', [], false) }}">
     @endif
 </head>
-<body class="auth-page-body">
+@php($pageClass = request()->route() && request()->route()->getName() ? 'page-' . str_replace('.', '-', request()->route()->getName()) : '')
+<body class="auth-page-body {{ $pageClass }}">
     <main class="auth-page">
         <section class="auth-shell">
             <aside class="auth-showcase">
