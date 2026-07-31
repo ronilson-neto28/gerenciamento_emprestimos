@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = contentType.includes('application/json') ? await response.json() : null;
 
         if (!response.ok) {
-            const message = data?.message || 'Não foi possível concluir a operação.';
+            const message = data && typeof data.message === 'string' && data.message ? data.message : 'Não foi possível concluir a operação.';
             throw new Error(message);
         }
 
@@ -277,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const payload = {
                 _token: csrfToken,
                 type: typeSelect ? typeSelect.value : 'entrada',
-                value: valueInput?.dataset.rawDigits || valueInput?.value || '',
+                value: valueInput && valueInput.dataset && valueInput.dataset.rawDigits ? valueInput.dataset.rawDigits : (valueInput ? valueInput.value : ''),
                 date: dateInput ? dateInput.value : '',
                 description: descriptionInput ? descriptionInput.value : '',
             };

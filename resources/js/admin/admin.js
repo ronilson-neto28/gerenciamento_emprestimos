@@ -1,4 +1,62 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const matchesSelector = (element, selector) => {
+        if (!(element instanceof Element)) {
+            return false;
+        }
+
+        const proto = Element.prototype;
+        const fn = proto.matches || proto.msMatchesSelector || proto.webkitMatchesSelector;
+        if (!fn) {
+            return false;
+        }
+
+        return fn.call(element, selector);
+    };
+
+    const closestSelector = (element, selector) => {
+        let current = element instanceof Element ? element : null;
+        while (current) {
+            if (matchesSelector(current, selector)) {
+                return current;
+            }
+            current = current.parentElement;
+        }
+        return null;
+    };
+
+    const bindTap = (element, handler) => {
+        if (!(element instanceof Element)) {
+            return;
+        }
+
+        let ignoreClick = false;
+
+        element.addEventListener('pointerup', (event) => {
+            if (!event || typeof event.pointerType !== 'string') {
+                return;
+            }
+
+            if (event.pointerType !== 'touch' && event.pointerType !== 'pen') {
+                return;
+            }
+
+            ignoreClick = true;
+            window.setTimeout(() => {
+                ignoreClick = false;
+            }, 350);
+
+            event.preventDefault();
+            handler(event);
+        });
+
+        element.addEventListener('click', (event) => {
+            if (ignoreClick) {
+                return;
+            }
+            handler(event);
+        });
+    };
+
     const closeAllSelectMenus = (except) => {
         document.querySelectorAll('.select-ui.is-open').forEach((item) => {
             if (except && item === except) {
@@ -29,9 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
             trigger.setAttribute('aria-label', ariaLabel.trim());
         }
 
-        const label = select.closest('.field')?.querySelector(`label[for="${select.id}"]`);
-        if (label) {
-            trigger.setAttribute('aria-label', label.textContent?.trim() || 'Selecionar');
+        const fieldWrapper = closestSelector(select, '.field');
+        const label = fieldWrapper ? fieldWrapper.querySelector(`label[for="${select.id}"]`) : null;
+        const labelText = label && label.textContent ? label.textContent.trim() : '';
+        if (labelText) {
+            trigger.setAttribute('aria-label', labelText);
         }
 
         const valueText = document.createElement('span');
@@ -107,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 optionButton.setAttribute('role', 'option');
                 optionButton.setAttribute('aria-selected', option.selected ? 'true' : 'false');
 
-                optionButton.addEventListener('click', () => {
+                bindTap(optionButton, () => {
                     if (option.disabled) {
                         return;
                     }
@@ -124,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
             applyFilter();
         };
 
-        trigger.addEventListener('click', () => {
+        bindTap(trigger, () => {
             if (trigger.disabled) {
                 return;
             }
@@ -184,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('click', (event) => {
         const target = event.target instanceof Element ? event.target : null;
-        if (target && target.closest('.select-ui')) {
+        if (target && closestSelector(target, '.select-ui')) {
             return;
         }
         closeAllSelectMenus();
@@ -223,9 +283,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             applyState(input.type === 'text');
 
-            button.addEventListener('click', () => {
+            bindTap(button, () => {
                 applyState(input.type === 'password');
-                input.focus({ preventScroll: true });
+                try {
+                    input.focus({ preventScroll: true });
+                } catch (error) {
+                    input.focus();
+                }
             });
         });
     };

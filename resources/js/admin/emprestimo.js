@@ -1,4 +1,29 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const matchesSelector = (element, selector) => {
+        if (!(element instanceof Element)) {
+            return false;
+        }
+
+        const proto = Element.prototype;
+        const fn = proto.matches || proto.msMatchesSelector || proto.webkitMatchesSelector;
+        if (!fn) {
+            return false;
+        }
+
+        return fn.call(element, selector);
+    };
+
+    const closestSelector = (element, selector) => {
+        let current = element instanceof Element ? element : null;
+        while (current) {
+            if (matchesSelector(current, selector)) {
+                return current;
+            }
+            current = current.parentElement;
+        }
+        return null;
+    };
+
     (() => {
         const modal = document.getElementById('loan-modal');
         const installmentsModal = document.getElementById('installments-modal');
@@ -60,7 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') || '' : '';
 
         const showToast = (message, type = 'success') => {
             const toast = document.createElement('div');
@@ -523,7 +549,8 @@ document.addEventListener('DOMContentLoaded', () => {
             row.dataset.cliente = loan.cliente || '';
             row.dataset.valor = loan.valor || '';
             row.dataset.parcelas = loan.parcelas || '';
-            row.dataset.numeroParcelas = String(loan.numero_parcelas ?? '');
+            const numeroParcelas = loan.numero_parcelas === null || loan.numero_parcelas === undefined ? '' : loan.numero_parcelas;
+            row.dataset.numeroParcelas = String(numeroParcelas);
             row.dataset.vencimento = loan.vencimento || '';
             row.dataset.tipo = loan.tipo || '';
             row.dataset.status = loan.status || '';
@@ -724,18 +751,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 let payload = await apiRequest(`/admin/api/emprestimos/${loanId}/parcelas`, { method: 'GET' });
-                if (payload?.needs_repair) {
+                if (payload && payload.needs_repair) {
                     await apiRequest(`/admin/api/emprestimos/${loanId}/parcelas/sync`, { method: 'POST' });
                     payload = await apiRequest(`/admin/api/emprestimos/${loanId}/parcelas`, { method: 'GET' });
                 }
-                const loan = payload?.loan || null;
-                const installments = Array.isArray(payload?.installments) ? payload.installments : [];
+                const loan = payload && payload.loan ? payload.loan : null;
+                const installments = payload && Array.isArray(payload.installments) ? payload.installments : [];
 
                 if (installmentsModalTitle) {
                     installmentsModalTitle.textContent = 'Cronograma de Parcelas';
                 }
                 if (installmentsModalSubtitle) {
-                    installmentsModalSubtitle.textContent = `${row?.dataset?.cliente || loan?.cliente || 'Cliente'} - parcelas ${String(loan?.intervalo || row?.dataset?.intervalo || 'mensal').toUpperCase()}.`;
+                    const rowCliente = row && row.dataset ? row.dataset.cliente : '';
+                    const loanCliente = loan && loan.cliente ? loan.cliente : '';
+                    const clienteLabel = rowCliente || loanCliente || 'Cliente';
+                    const rowIntervalo = row && row.dataset ? row.dataset.intervalo : '';
+                    const loanIntervalo = loan && loan.intervalo ? loan.intervalo : '';
+                    const intervaloLabel = (loanIntervalo || rowIntervalo || 'mensal').toUpperCase();
+                    installmentsModalSubtitle.textContent = `${clienteLabel} - parcelas ${intervaloLabel}.`;
                 }
 
                 const settledStatuses = ['pago', 'pago_parcial'];
@@ -782,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const line = document.createElement('tr');
                     line.dataset.installmentId = item.id || '';
                     line.innerHTML = `
-                        <td>${item.numero ?? ''}</td>
+                        <td>${item.numero === null || item.numero === undefined ? '' : item.numero}</td>
                         <td>${item.vencimento_display || isoToDisplayDate(item.vencimento || '') || ''}</td>
                         <td>${item.amortizacao || ''}</td>
                         <td>${item.juros || ''}</td>
@@ -790,7 +823,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td><strong>${item.total || ''}</strong></td>
                         <td><span class="status-badge status-${statusClass}"><span class="status-dot" aria-hidden="true"></span> ${status}</span></td>
                         <td class="text-right">
-                            ${canReceive ? `<button type="button" class="action-table-btn" data-trigger-receive data-parcela-id="${item.id}" data-installment="${item.numero ?? ''}" data-amortization-cents="${item.amortizacao_cents ?? 0}" data-interest-cents="${item.juros_cents ?? 0}" data-total-cents="${item.total_cents ?? 0}">${receiveButtonContent}</button>` : '<span>-</span>'}
+                            ${canReceive ? `<button type="button" class="action-table-btn" data-trigger-receive data-parcela-id="${item.id}" data-installment="${item.numero === null || item.numero === undefined ? '' : item.numero}" data-amortization-cents="${item.amortizacao_cents === null || item.amortizacao_cents === undefined ? 0 : item.amortizacao_cents}" data-interest-cents="${item.juros_cents === null || item.juros_cents === undefined ? 0 : item.juros_cents}" data-total-cents="${item.total_cents === null || item.total_cents === undefined ? 0 : item.total_cents}">${receiveButtonContent}</button>` : '<span>-</span>'}
                         </td>
                     `;
                     installmentsList.appendChild(line);
@@ -829,13 +862,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (installmentsList) {
             installmentsList.addEventListener('click', (event) => {
                 const target = event.target instanceof Element ? event.target : null;
-                const actionButton = target ? target.closest('.action-table-btn') : null;
+                const actionButton = target ? closestSelector(target, '.action-table-btn') : null;
 
                 if (!actionButton) {
                     return;
                 }
 
-                selectedReceiveRow = actionButton.closest('tr');
+                selectedReceiveRow = closestSelector(actionButton, 'tr');
                 selectedInstallmentId = actionButton.dataset.parcelaId || '';
 
                 const installmentNumber = actionButton.dataset.installment || '';
@@ -920,7 +953,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (currentLoanId) {
                         await loadInstallmentsForLoan(currentLoanId, currentLoanRow);
                         const loanPayload = await apiRequest(`/admin/api/emprestimos/${currentLoanId}`, { method: 'GET' });
-                        if (loanPayload?.data && currentLoanRow) {
+                        if (loanPayload && loanPayload.data && currentLoanRow) {
                             upsertLoanRow(loanPayload.data);
                         }
                     }
@@ -1021,10 +1054,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify(payload),
                 });
 
-                const savedId = result?.id || loanId;
+                const savedId = result && result.id ? result.id : loanId;
                 if (savedId) {
                     const loanPayload = await apiRequest(`/admin/api/emprestimos/${savedId}`, { method: 'GET' });
-                    if (loanPayload?.data) {
+                    if (loanPayload && loanPayload.data) {
                         upsertLoanRow(loanPayload.data);
                     }
                 }

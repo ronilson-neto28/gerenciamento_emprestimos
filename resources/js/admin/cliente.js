@@ -4,6 +4,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.__keneddyClientesInitialized = true;
 
+    const matchesSelector = (element, selector) => {
+        if (!(element instanceof Element)) {
+            return false;
+        }
+
+        const proto = Element.prototype;
+        const fn = proto.matches || proto.msMatchesSelector || proto.webkitMatchesSelector;
+        if (!fn) {
+            return false;
+        }
+
+        return fn.call(element, selector);
+    };
+
+    const closestSelector = (element, selector) => {
+        let current = element instanceof Element ? element : null;
+        while (current) {
+            if (matchesSelector(current, selector)) {
+                return current;
+            }
+            current = current.parentElement;
+        }
+        return null;
+    };
+
     const modal = document.getElementById('client-modal');
     const openButton = document.querySelector('[data-open-client-modal]');
     const closeButtons = document.querySelectorAll('[data-close-client-modal]');
@@ -47,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = contentType.includes('application/json') ? await response.json() : null;
 
         if (!response.ok) {
-            const message = data?.message || 'Não foi possível concluir a operação.';
+            const message = data && typeof data.message === 'string' && data.message ? data.message : 'Não foi possível concluir a operação.';
             throw new Error(message);
         }
 
@@ -265,9 +290,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('click', async (event) => {
-        const editButton = event.target.closest('[data-edit-client]');
+        const editButton = closestSelector(event.target, '[data-edit-client]');
         if (editButton) {
-            const row = editButton.closest('[data-client-row]');
+            const row = closestSelector(editButton, '[data-client-row]');
             if (row) {
                 setEditMode(row);
                 openModal();
@@ -275,9 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const deleteButton = event.target.closest('[data-delete-client]');
+        const deleteButton = closestSelector(event.target, '[data-delete-client]');
         if (deleteButton) {
-            const row = deleteButton.closest('[data-client-row]');
+            const row = closestSelector(deleteButton, '[data-client-row]');
             if (!row) {
                 return;
             }

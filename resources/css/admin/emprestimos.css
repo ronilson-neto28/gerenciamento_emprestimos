@@ -832,6 +832,16 @@
         grid-template-columns: 1fr;
     }
 
+    .page-admin-emprestimos .icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .page-admin-emprestimos .schedule-btn {
+        min-height: 44px;
+        padding: 10px 16px;
+    }
+
     .page-admin-emprestimos .schedule-toolbar {
         flex-direction: column;
         align-items: stretch;

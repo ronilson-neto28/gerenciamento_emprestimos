@@ -1467,3 +1467,24 @@ a {
         align-items: flex-start;
     }
 }
+
+@media (max-width: 768px) {
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .password-toggle {
+        width: 44px;
+        height: 44px;
+    }
+
+    .modal-close {
+        width: 44px;
+        height: 44px;
+    }
+
+    .select-trigger {
+        min-height: 44px;
+    }
+}
