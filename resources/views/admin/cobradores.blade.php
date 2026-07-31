@@ -6,7 +6,7 @@
 
 @section('content')
     <section class="user-access-layout">
-        <article class="card user-access-card">
+        <article class="card">
             <div class="user-access-card-inner">
                 <div class="user-access-header">
                     <span class="user-access-kicker">Novo acesso</span>
@@ -86,4 +86,12 @@
             @endif
         </article>
     </section>
+
+    @push('styles')
+        @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+            @vite(['resources/css/admin/cobradores.css'])
+        @else
+            <link rel="stylesheet" href="{{ route('assets.admin.cobradores_css', [], false) }}">
+        @endif
+    @endpush
 @endsection

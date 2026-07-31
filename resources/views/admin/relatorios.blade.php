@@ -117,4 +117,12 @@
             </div>
         </aside>
     </section>
+
+    @push('styles')
+        @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+            @vite(['resources/css/admin/relatorios.css'])
+        @else
+            <link rel="stylesheet" href="{{ route('assets.admin.relatorios_css', [], false) }}">
+        @endif
+    @endpush
 @endsection

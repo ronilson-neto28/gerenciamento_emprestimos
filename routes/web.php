@@ -90,6 +90,17 @@ Route::prefix('assets/admin')->name('assets.admin.')->group(function () {
         ]);
     })->name('emprestimos_css');
 
+    Route::get('/relatorios.css', function () {
+        $path = resource_path('css/admin/relatorios.css');
+
+        abort_unless(is_file($path), 404);
+
+        return response()->file($path, [
+            'Content-Type' => 'text/css; charset=UTF-8',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
+    })->name('relatorios_css');
+
     Route::get('/financeiro.css', function () {
         $path = resource_path('css/admin/financeiro.css');
 
@@ -100,6 +111,17 @@ Route::prefix('assets/admin')->name('assets.admin.')->group(function () {
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
         ]);
     })->name('financeiro_css');
+
+    Route::get('/cobradores.css', function () {
+        $path = resource_path('css/admin/cobradores.css');
+
+        abort_unless(is_file($path), 404);
+
+        return response()->file($path, [
+            'Content-Type' => 'text/css; charset=UTF-8',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
+    })->name('cobradores_css');
 
     Route::get('/cliente.js', function () {
         $path = resource_path('js/admin/cliente.js');
