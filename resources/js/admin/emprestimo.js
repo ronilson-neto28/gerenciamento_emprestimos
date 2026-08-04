@@ -85,9 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        setupCobradorAutocomplete(fields.cobrador);
-        setupCobradorAutocomplete(document.getElementById('cobrador_filtro'));
-
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');
         const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') || '' : '';
 
@@ -302,6 +299,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeMenu();
             });
         };
+
+        setupCobradorAutocomplete(fields.cobrador);
+        setupCobradorAutocomplete(document.getElementById('cobrador_filtro'));
 
         const updateLoanCounters = () => {
             const rows = document.querySelectorAll('[data-loan-row]').length;
