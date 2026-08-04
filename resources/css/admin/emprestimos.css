@@ -99,6 +99,58 @@
     gap: 6px;
 }
 
+.page-admin-emprestimos .field .autocomplete-menu {
+    display: none;
+}
+
+.page-admin-emprestimos .field.has-autocomplete {
+    position: relative;
+}
+
+.page-admin-emprestimos .autocomplete-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    z-index: 1200;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.page-admin-emprestimos .autocomplete-menu.is-open {
+    display: block;
+}
+
+.page-admin-emprestimos .autocomplete-option {
+    width: 100%;
+    min-height: 44px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    text-align: left;
+    padding: 10px 12px;
+    cursor: pointer;
+    font: inherit;
+    color: var(--text-main);
+}
+
+.page-admin-emprestimos .autocomplete-option:hover,
+.page-admin-emprestimos .autocomplete-option:focus {
+    background: #f1f5f9;
+    outline: none;
+}
+
+.page-admin-emprestimos .autocomplete-empty {
+    padding: 10px 12px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
 .page-admin-emprestimos .search-field,
 .page-admin-emprestimos .status-field,
 .page-admin-emprestimos .action-field {

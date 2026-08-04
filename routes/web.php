@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\Api\Clientes\DestroyController as ClientesDestroy
 use App\Http\Controllers\Admin\Api\Clientes\ShowController as ClientesShowController;
 use App\Http\Controllers\Admin\Api\Clientes\StoreController as ClientesStoreController;
 use App\Http\Controllers\Admin\Api\Clientes\UpdateController as ClientesUpdateController;
+use App\Http\Controllers\Admin\Api\Cobradores\IndexController as CobradoresIndexController;
 use App\Http\Controllers\Admin\Api\Emprestimos\DestroyController as EmprestimosDestroyController;
 use App\Http\Controllers\Admin\Api\Emprestimos\ShowController as EmprestimosShowController;
 use App\Http\Controllers\Admin\Api\Emprestimos\StoreController as EmprestimosStoreController;
@@ -203,6 +204,8 @@ Route::prefix('admin/api')->middleware('auth')->name('admin.api.')->group(functi
     Route::get('/clientes/{id}', ClientesShowController::class)->name('clientes.show');
     Route::patch('/clientes/{id}', ClientesUpdateController::class)->name('clientes.update');
     Route::delete('/clientes/{id}', ClientesDestroyController::class)->name('clientes.destroy')->middleware(['admin.delete', 'can:delete-clientes']);
+
+    Route::get('/cobradores', CobradoresIndexController::class)->name('cobradores.index')->middleware('can:create-emprestimos');
 
     Route::post('/emprestimos', EmprestimosStoreController::class)->name('emprestimos.store')->middleware('can:create-emprestimos');
     Route::get('/emprestimos/{id}', EmprestimosShowController::class)->name('emprestimos.show');

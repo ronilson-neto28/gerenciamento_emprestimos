@@ -48,6 +48,7 @@
                         value="{{ $filters['cobrador'] }}"
                         placeholder="Digite o nome do cobrador"
                     >
+                    <div class="autocomplete-menu" id="cobrador_filtro-suggestions" aria-hidden="true"></div>
                 </div>
 
                 <div class="field status-field">
@@ -261,6 +262,7 @@
                     <div class="field field-full">
                         <label for="cobrador">COBRADOR</label>
                         <input type="text" id="cobrador" name="cobrador" placeholder="Digite o nome do cobrador responsavel">
+                        <div class="autocomplete-menu" id="cobrador-suggestions" aria-hidden="true"></div>
                     </div>
 
                     <div class="field field-full">

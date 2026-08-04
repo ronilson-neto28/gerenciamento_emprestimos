@@ -85,6 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        setupCobradorAutocomplete(fields.cobrador);
+        setupCobradorAutocomplete(document.getElementById('cobrador_filtro'));
+
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');
         const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') || '' : '';
 
@@ -127,6 +130,177 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             return payload;
+        };
+
+        const bindTap = (element, handler) => {
+            if (!(element instanceof Element)) {
+                return;
+            }
+
+            let ignoreClick = false;
+
+            element.addEventListener('pointerup', (event) => {
+                if (!event || typeof event.pointerType !== 'string') {
+                    return;
+                }
+
+                if (event.pointerType !== 'touch' && event.pointerType !== 'pen') {
+                    return;
+                }
+
+                ignoreClick = true;
+                window.setTimeout(() => {
+                    ignoreClick = false;
+                }, 350);
+
+                event.preventDefault();
+                handler(event);
+            });
+
+            element.addEventListener('click', (event) => {
+                if (ignoreClick) {
+                    return;
+                }
+                handler(event);
+            });
+        };
+
+        const setupCobradorAutocomplete = (input) => {
+            if (!(input instanceof HTMLInputElement)) {
+                return;
+            }
+
+            const field = closestSelector(input, '.field');
+            if (field) {
+                field.classList.add('has-autocomplete');
+            }
+
+            const menuId = `${input.id}-suggestions`;
+            let menu = document.getElementById(menuId);
+            if (!menu) {
+                menu = document.createElement('div');
+                menu.className = 'autocomplete-menu';
+                menu.id = menuId;
+                menu.setAttribute('aria-hidden', 'true');
+                input.insertAdjacentElement('afterend', menu);
+            }
+
+            let debounceTimer = 0;
+            let activeController = null;
+
+            const closeMenu = () => {
+                menu.classList.remove('is-open');
+                menu.setAttribute('aria-hidden', 'true');
+                menu.innerHTML = '';
+            };
+
+            const openMenu = () => {
+                menu.classList.add('is-open');
+                menu.setAttribute('aria-hidden', 'false');
+            };
+
+            const render = (items) => {
+                menu.innerHTML = '';
+
+                if (!Array.isArray(items) || items.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'autocomplete-empty';
+                    empty.textContent = 'Nenhum cobrador encontrado.';
+                    menu.appendChild(empty);
+                    openMenu();
+                    return;
+                }
+
+                items.forEach((item) => {
+                    const name = item && typeof item.name === 'string' ? item.name.trim() : '';
+                    if (!name) {
+                        return;
+                    }
+
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'autocomplete-option';
+                    btn.textContent = name;
+                    btn.dataset.value = name;
+                    bindTap(btn, (event) => {
+                        if (event && typeof event.preventDefault === 'function') {
+                            event.preventDefault();
+                        }
+                        input.value = name;
+                        closeMenu();
+                        try {
+                            input.focus({ preventScroll: true });
+                        } catch (error) {
+                            input.focus();
+                        }
+                    });
+                    menu.appendChild(btn);
+                });
+
+                openMenu();
+            };
+
+            const fetchOptions = async (term) => {
+                if (activeController) {
+                    activeController.abort();
+                }
+
+                const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                activeController = controller;
+
+                const query = term ? `?q=${encodeURIComponent(term)}` : '';
+                const url = `/admin/api/cobradores${query}`;
+
+                try {
+                    const payload = await apiRequest(url, controller ? { method: 'GET', signal: controller.signal } : { method: 'GET' });
+                    const list = payload && Array.isArray(payload.data) ? payload.data : [];
+                    render(list);
+                } catch (error) {
+                    if (error && error.name === 'AbortError') {
+                        return;
+                    }
+                    closeMenu();
+                }
+            };
+
+            const scheduleFetch = () => {
+                const term = input.value.trim();
+                if (debounceTimer) {
+                    window.clearTimeout(debounceTimer);
+                }
+                debounceTimer = window.setTimeout(() => fetchOptions(term), 180);
+            };
+
+            input.addEventListener('input', scheduleFetch);
+            input.addEventListener('focus', () => fetchOptions(input.value.trim()));
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeMenu();
+                }
+            });
+
+            input.addEventListener('blur', () => {
+                window.setTimeout(() => {
+                    const active = document.activeElement;
+                    if (active && menu.contains(active)) {
+                        return;
+                    }
+                    closeMenu();
+                }, 140);
+            });
+
+            document.addEventListener('click', (event) => {
+                const target = event.target instanceof Element ? event.target : null;
+                if (!target) {
+                    return;
+                }
+
+                if (target === input || menu.contains(target) || (field && field.contains(target))) {
+                    return;
+                }
+
+                closeMenu();
+            });
         };
 
         const updateLoanCounters = () => {
