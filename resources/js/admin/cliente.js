@@ -4,31 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.__keneddyClientesInitialized = true;
 
-    const matchesSelector = (element, selector) => {
-        if (!(element instanceof Element)) {
-            return false;
-        }
-
-        const proto = Element.prototype;
-        const fn = proto.matches || proto.msMatchesSelector || proto.webkitMatchesSelector;
-        if (!fn) {
-            return false;
-        }
-
-        return fn.call(element, selector);
-    };
-
-    const closestSelector = (element, selector) => {
-        let current = element instanceof Element ? element : null;
-        while (current) {
-            if (matchesSelector(current, selector)) {
-                return current;
-            }
-            current = current.parentElement;
-        }
-        return null;
-    };
-
     const modal = document.getElementById('client-modal');
     const openButton = document.querySelector('[data-open-client-modal]');
     const closeButtons = document.querySelectorAll('[data-close-client-modal]');
@@ -231,6 +206,14 @@ document.addEventListener('DOMContentLoaded', () => {
         form.reset();
     };
 
+    const getClientFromRow = (row) => {
+        try {
+            return row && row.dataset && row.dataset.client ? JSON.parse(row.dataset.client) : null;
+        } catch {
+            return null;
+        }
+    };
+
     const setEditMode = (row) => {
         if (modalTitle) {
             modalTitle.textContent = 'Editar cliente';
@@ -246,14 +229,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         form.dataset.mode = 'edit';
         form.dataset.clientId = row.dataset.clientId || '';
+
+        const client = getClientFromRow(row);
+        const C = (key, fallback = '') => (client && typeof client[key] !== 'undefined' ? client[key] : fallback);
+
         fillForm({
-            nome: row.dataset.nome,
-            telefone: row.dataset.telefone,
-            cpf: row.dataset.cpf,
-            endereco: row.dataset.endereco,
-            cidade: row.dataset.cidade,
-            chave_pix: row.dataset.chavePix,
-            banco: row.dataset.banco,
+            nome: String(C('nome', '')),
+            telefone: String(C('telefone', '')),
+            cpf: String(C('cpf', '')),
+            endereco: String(C('endereco', '')),
+            cidade: String(C('cidade', '')),
+            chave_pix: String(C('chave_pix', '')),
+            banco: String(C('banco', '')),
         });
     };
 
@@ -290,9 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('click', async (event) => {
-        const editButton = closestSelector(event.target, '[data-edit-client]');
+        const target = event.target;
+        const editButton = target.closest ? target.closest('[data-edit-client]') : null;
         if (editButton) {
-            const row = closestSelector(editButton, '[data-client-row]');
+            const row = editButton.closest('[data-client-row]');
             if (row) {
                 setEditMode(row);
                 openModal();
@@ -300,9 +288,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const deleteButton = closestSelector(event.target, '[data-delete-client]');
+        const deleteButton = target.closest ? target.closest('[data-delete-client]') : null;
         if (deleteButton) {
-            const row = closestSelector(deleteButton, '[data-client-row]');
+            const row = deleteButton.closest('[data-client-row]');
             if (!row) {
                 return;
             }
@@ -313,7 +301,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const clientName = row.dataset.nome || 'este cliente';
+            const client = getClientFromRow(row);
+            const clientName = client && client.nome ? String(client.nome) : 'este cliente';
             const confirmed = window.confirm(`Deseja excluir ${clientName}?`);
             if (!confirmed) {
                 return;

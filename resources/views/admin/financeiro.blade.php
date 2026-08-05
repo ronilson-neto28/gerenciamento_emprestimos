@@ -158,7 +158,7 @@
                                         {{ (string) ($item->description ?? '') }}
                                     </td>
                                     <td class="finance-date">
-                                        {{ \Carbon\Carbon::parse((string) ($item->date ?? now()->toDateString()))->format('d/m/Y') }}
+                                        {{ \Carbon\Carbon::parse($item->date ?? now()->toDateString())->format('d/m/Y') }}
                                     </td>
                                     <td class="finance-value">
                                         R$ {{ number_format((float) ($item->value ?? 0), 2, ',', '.') }}
@@ -208,18 +208,6 @@
                         <label for="finance-description">Descrição / Justificativa</label>
                         <textarea id="finance-description" name="description" placeholder="Ex: Pagamento do servidor em nuvem ou recebimento de fatura..."></textarea>
                     </div>
-
-                    {{--
-                    <div class="field field-full">
-                        <label for="finance-category">Categoria Operacional</label>
-                        <select id="finance-category" name="category" class="js-enhanced-select">
-                            <option value="" selected>Selecione uma categoria de custo</option>
-                            <option value="marketing">Marketing &amp; Tráfego</option>
-                            <option value="operacional">Infraestrutura Operacional</option>
-                            <option value="outros">Outros Fluxos</option>
-                        </select>
-                    </div>
-                    --}}
                 </div>
 
                 <div class="form-actions">

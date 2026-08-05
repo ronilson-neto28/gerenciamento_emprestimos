@@ -1,29 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const matchesSelector = (element, selector) => {
-        if (!(element instanceof Element)) {
-            return false;
-        }
-
-        const proto = Element.prototype;
-        const fn = proto.matches || proto.msMatchesSelector || proto.webkitMatchesSelector;
-        if (!fn) {
-            return false;
-        }
-
-        return fn.call(element, selector);
-    };
-
-    const closestSelector = (element, selector) => {
-        let current = element instanceof Element ? element : null;
-        while (current) {
-            if (matchesSelector(current, selector)) {
-                return current;
-            }
-            current = current.parentElement;
-        }
-        return null;
-    };
-
     (() => {
         const modal = document.getElementById('loan-modal');
         const installmentsModal = document.getElementById('installments-modal');
@@ -167,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const field = closestSelector(input, '.field');
+            const field = input.closest('.field');
             if (field) {
                 field.classList.add('has-autocomplete');
             }
@@ -429,7 +404,16 @@ document.addEventListener('DOMContentLoaded', () => {
             form.dataset.mode = 'edit';
             form.dataset.loanId = row.dataset.loanId || '';
 
-            const desiredCliente = String(row.dataset.cliente || '').trim();
+            let loan = null;
+            try {
+                loan = row.dataset.loan ? JSON.parse(row.dataset.loan) : null;
+            } catch (error) {
+                loan = null;
+            }
+
+            const L = (key, fallback = '') => (loan && typeof loan[key] !== 'undefined' ? loan[key] : fallback);
+
+            const desiredCliente = String(L('cliente', '')).trim();
             fields.cliente.value = desiredCliente;
             if (desiredCliente && fields.cliente.value !== desiredCliente) {
                 const option = new Option(desiredCliente, desiredCliente, true, true);
@@ -438,27 +422,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 fields.cliente.value = desiredCliente;
             }
             fields.cliente.dispatchEvent(new Event('change', { bubbles: true }));
-            fields.data_emprestimo.value = row.dataset.dataEmprestimo || '';
+            fields.data_emprestimo.value = String(L('data_emprestimo', ''));
             if (fields.data_emprestimo_display) {
                 fields.data_emprestimo_display.value = isoToDisplayDate(fields.data_emprestimo.value);
             }
-            fields.valor_emprestimo.value = row.dataset.valor || '';
-            fields.taxa_juros.value = row.dataset.taxaJuros || '';
-            fields.tipo_juros.value = row.dataset.tipoJuros || 'simples';
-            fields.numero_parcelas.value = row.dataset.numeroParcelas || '';
-            fields.intervalo.value = row.dataset.intervalo || 'mensal';
-            fields.tipo_multa.value = row.dataset.tipoMulta || 'percentual';
-            fields.valor_multa.value = row.dataset.valorMulta || '';
-            fields.cobranca_multa.value = row.dataset.cobrancaMulta || 'automatica';
-            fields.cobrador.value = row.dataset.cobrador || '';
+            fields.valor_emprestimo.value = String(L('valor', ''));
+            fields.taxa_juros.value = String(L('taxa_juros', ''));
+            fields.tipo_juros.value = String(L('tipo_juros', 'simples'));
+            fields.numero_parcelas.value = L('numero_parcelas', '') === '' ? '' : String(L('numero_parcelas', ''));
+            fields.intervalo.value = String(L('intervalo', 'mensal'));
+            fields.tipo_multa.value = String(L('tipo_multa', 'percentual'));
+            fields.valor_multa.value = String(L('valor_multa', ''));
+            fields.cobranca_multa.value = String(L('cobranca_multa', 'automatica'));
+            fields.cobrador.value = String(L('cobrador', ''));
             [fields.tipo_juros, fields.intervalo, fields.tipo_multa, fields.cobranca_multa].forEach((select) => {
                 if (select) {
                     select.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             });
-            fields.observacoes.value = row.dataset.tipo ? `Emprestimo do tipo ${row.dataset.tipo}.` : '';
+            const loanType = String(L('tipo', ''));
+            fields.observacoes.value = loanType ? `Emprestimo do tipo ${loanType}.` : '';
 
-            const selectedExceptions = (row.dataset.excecoesDia || '').split(',').filter(Boolean);
+            const selectedExceptions = Array.isArray(L('excecoes_dia', [])) ? L('excecoes_dia', []) : String(L('excecoes_dia', '')).split(',').filter(Boolean);
 
             Object.entries(exceptionFields).forEach(([key, input]) => {
                 if (input) {
@@ -534,17 +519,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             selectedReceiveRow = null;
             selectedInstallmentId = '';
-        };
-
-        const parseCurrencyValue = (value) => {
-            const normalized = (value || '')
-                .replace(/[^\d,.-]/g, '')
-                .replace(/\./g, '')
-                .replace(',', '.');
-
-            const parsed = Number.parseFloat(normalized);
-
-            return Number.isNaN(parsed) ? 0 : parsed;
         };
 
         const formatCurrencyValue = (value) => new Intl.NumberFormat('pt-BR', {
@@ -624,82 +598,10 @@ document.addEventListener('DOMContentLoaded', () => {
             input.addEventListener('blur', updateDisplay);
         };
 
-        const formatScheduleDate = (date) => {
-            const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-
-            return `${day}/${month}/${year} (${weekdays[date.getDay()]})`;
-        };
-
         const receiveButtonContent = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M4 7h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16 3v4M8 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 14l3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Receber</span>';
 
         bindCurrencyMask(fields.valor_emprestimo);
         bindCurrencyMask(receiveAmount);
-
-        const incrementDateByInterval = (baseDate, intervalo, step) => {
-            const date = new Date(baseDate.getTime());
-
-            if (intervalo === 'diario') {
-                date.setDate(date.getDate() + step);
-                return date;
-            }
-
-            if (intervalo === 'semanal') {
-                date.setDate(date.getDate() + (step * 7));
-                return date;
-            }
-
-            if (intervalo === 'quinzenal') {
-                date.setDate(date.getDate() + (step * 15));
-                return date;
-            }
-
-            date.setMonth(date.getMonth() + step);
-            return date;
-        };
-
-        const buildScheduleRows = (row) => {
-            const totalInstallments = Number.parseInt(row.dataset.numeroParcelas || '0', 10);
-            const loanValue = parseCurrencyValue(row.dataset.valor || '0');
-            const interestRate = Number.parseFloat((row.dataset.taxaJuros || '0').replace('%', '').replace(',', '.')) || 0;
-            const penaltyValue = parseCurrencyValue(row.dataset.valorMulta || '0');
-            const interval = row.dataset.intervalo || 'mensal';
-            const baseDate = row.dataset.dataEmprestimo ? new Date(`${row.dataset.dataEmprestimo}T12:00:00`) : new Date();
-            const paidInstallments = row.dataset.status === 'quitado'
-                ? totalInstallments
-                : row.dataset.status === 'em_dia'
-                    ? Math.max(totalInstallments - 1, 0)
-                    : row.dataset.status === 'atrasado'
-                        ? Math.max(totalInstallments - 3, 0)
-                        : 0;
-
-            const amortization = totalInstallments > 0 ? loanValue / totalInstallments : 0;
-            const interest = amortization * (interestRate / 100);
-
-            return Array.from({ length: totalInstallments }, (_, index) => {
-                const installmentNumber = index + 1;
-                const dueDate = incrementDateByInterval(baseDate, interval, installmentNumber);
-                const overdue = row.dataset.status === 'atrasado' && installmentNumber > paidInstallments && installmentNumber <= paidInstallments + 2;
-                const received = installmentNumber <= paidInstallments;
-                const penalty = overdue ? penaltyValue : 0;
-                const totalValue = amortization + interest + penalty;
-                const status = received ? 'Recebida' : overdue ? 'Vencida' : 'A Vencer';
-                const statusClass = received ? 'recebida' : overdue ? 'vencida' : 'a-vencer';
-
-                return {
-                    installmentNumber,
-                    dueDate: formatScheduleDate(dueDate),
-                    amortization,
-                    interest,
-                    penalty,
-                    totalValue,
-                    status,
-                    statusClass,
-                };
-            });
-        };
 
         const formatCurrencyFromCents = (cents) => formatCurrencyValue((Number(cents) || 0) / 100);
 
@@ -718,25 +620,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        const setLoanJson = (row, loan) => {
+            const payload = {
+                id: String(loan.id || row.dataset.loanId || ''),
+                cliente: String(loan.cliente || ''),
+                valor: String(loan.valor || ''),
+                parcelas: String(loan.parcelas || ''),
+                numero_parcelas: loan.numero_parcelas === null || loan.numero_parcelas === undefined ? '' : loan.numero_parcelas,
+                vencimento: String(loan.vencimento || ''),
+                vencimento_display: String(loan.vencimento_display || isoToDisplayDate(loan.vencimento || '') || ''),
+                tipo: String(loan.tipo || ''),
+                status: String(loan.status || ''),
+                data_emprestimo: String(loan.data_emprestimo || ''),
+                taxa_juros: String(loan.taxa_juros || ''),
+                tipo_juros: String(loan.tipo_juros || 'simples'),
+                intervalo: String(loan.intervalo || 'mensal'),
+                tipo_multa: String(loan.tipo_multa || 'percentual'),
+                valor_multa: String(loan.valor_multa || ''),
+                cobranca_multa: String(loan.cobranca_multa || 'automatica'),
+                cobrador: String(loan.cobrador || ''),
+                excecoes_dia: Array.isArray(loan.excecoes_dia) ? loan.excecoes_dia : String(loan.excecoes_dia || '').split(',').filter(Boolean),
+            };
+            row.dataset.loanId = payload.id;
+            try {
+                row.dataset.loan = JSON.stringify(payload);
+            } catch (error) {
+                row.dataset.loan = '{}';
+            }
+        };
+
         const applyLoanToRow = (row, loan) => {
-            row.dataset.loanId = loan.id || row.dataset.loanId || '';
-            row.dataset.cliente = loan.cliente || '';
-            row.dataset.valor = loan.valor || '';
-            row.dataset.parcelas = loan.parcelas || '';
-            const numeroParcelas = loan.numero_parcelas === null || loan.numero_parcelas === undefined ? '' : loan.numero_parcelas;
-            row.dataset.numeroParcelas = String(numeroParcelas);
-            row.dataset.vencimento = loan.vencimento || '';
-            row.dataset.tipo = loan.tipo || '';
-            row.dataset.status = loan.status || '';
-            row.dataset.dataEmprestimo = loan.data_emprestimo || '';
-            row.dataset.taxaJuros = loan.taxa_juros || '';
-            row.dataset.tipoJuros = loan.tipo_juros || 'simples';
-            row.dataset.intervalo = loan.intervalo || 'mensal';
-            row.dataset.tipoMulta = loan.tipo_multa || 'percentual';
-            row.dataset.valorMulta = loan.valor_multa || '';
-            row.dataset.cobrancaMulta = loan.cobranca_multa || 'automatica';
-            row.dataset.cobrador = loan.cobrador || '';
-            row.dataset.excecoesDia = Array.isArray(loan.excecoes_dia) ? loan.excecoes_dia.join(',') : (loan.excecoes_dia || '');
+            setLoanJson(row, loan);
 
             const cells = row.querySelectorAll('td');
             if (cells.length < 7) {
@@ -768,6 +682,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             row.dataset.boundActions = '1';
 
+            let loan = null;
+            try {
+                loan = row.dataset.loan ? JSON.parse(row.dataset.loan) : null;
+            } catch (error) {
+                loan = null;
+            }
+
             const editBtn = row.querySelector('[data-edit-loan]');
             if (editBtn) {
                 editBtn.addEventListener('click', () => {
@@ -784,7 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
 
-                    const clientName = row.dataset.cliente || 'este emprestimo';
+                    const clientName = (loan && loan.cliente) || 'este emprestimo';
                     const confirmed = window.confirm(`Deseja excluir o emprestimo de ${clientName}?`);
                     if (!confirmed) {
                         return;
@@ -923,6 +844,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             installmentsList.innerHTML = '<tr><td colspan="8">Carregando parcelas...</td></tr>';
 
+            let rowLoan = null;
+            try {
+                rowLoan = row && row.dataset && row.dataset.loan ? JSON.parse(row.dataset.loan) : null;
+            } catch (error) {
+                rowLoan = null;
+            }
+
             try {
                 let payload = await apiRequest(`/admin/api/emprestimos/${loanId}/parcelas`, { method: 'GET' });
                 if (payload && payload.needs_repair) {
@@ -936,10 +864,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     installmentsModalTitle.textContent = 'Cronograma de Parcelas';
                 }
                 if (installmentsModalSubtitle) {
-                    const rowCliente = row && row.dataset ? row.dataset.cliente : '';
+                    const rowCliente = rowLoan && rowLoan.cliente ? rowLoan.cliente : '';
                     const loanCliente = loan && loan.cliente ? loan.cliente : '';
                     const clienteLabel = rowCliente || loanCliente || 'Cliente';
-                    const rowIntervalo = row && row.dataset ? row.dataset.intervalo : '';
+                    const rowIntervalo = rowLoan && rowLoan.intervalo ? rowLoan.intervalo : '';
                     const loanIntervalo = loan && loan.intervalo ? loan.intervalo : '';
                     const intervaloLabel = (loanIntervalo || rowIntervalo || 'mensal').toUpperCase();
                     installmentsModalSubtitle.textContent = `${clienteLabel} - parcelas ${intervaloLabel}.`;
@@ -1036,13 +964,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (installmentsList) {
             installmentsList.addEventListener('click', (event) => {
                 const target = event.target instanceof Element ? event.target : null;
-                const actionButton = target ? closestSelector(target, '.action-table-btn') : null;
+                const actionButton = target ? target.closest('.action-table-btn') : null;
 
                 if (!actionButton) {
                     return;
                 }
 
-                selectedReceiveRow = closestSelector(actionButton, 'tr');
+                selectedReceiveRow = actionButton.closest('tr');
                 selectedInstallmentId = actionButton.dataset.parcelaId || '';
 
                 const installmentNumber = actionButton.dataset.installment || '';

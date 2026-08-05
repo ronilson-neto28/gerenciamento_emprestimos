@@ -12,7 +12,8 @@
     @endif
     @stack('styles')
 </head>
-@php($pageClass = request()->route() && request()->route()->getName() ? 'page-' . str_replace('.', '-', request()->route()->getName()) : '')
+@php($routeName = request()->route()?->getName())
+@php($pageClass = $routeName ? 'page-' . str_replace('.', '-', $routeName) : '')
 <body class="{{ $pageClass }}">
     @php($authUser = auth()->user())
     <div class="admin-shell">
@@ -38,7 +39,7 @@
             @if ($authUser)
                 <div class="sidebar-user-card">
                     <div class="sidebar-user-name">{{ $authUser->name }}</div>
-                    <div class="sidebar-user-role">{{ ucfirst((string) ($authUser->role ?? 'usuario')) }}</div>
+                    <div class="sidebar-user-role">{{ ucfirst($authUser->role ?? 'usuario') }}</div>
 
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
@@ -61,7 +62,7 @@
                     @if ($authUser)
                         <div class="topbar-user-chip">
                             <strong>{{ $authUser->name }}</strong>
-                            <span>{{ ucfirst((string) ($authUser->role ?? 'usuario')) }}</span>
+                            <span>{{ ucfirst($authUser->role ?? 'usuario') }}</span>
                         </div>
                     @endif
                     @stack('topbar-actions')

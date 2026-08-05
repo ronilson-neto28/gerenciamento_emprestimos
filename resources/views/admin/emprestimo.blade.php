@@ -106,30 +106,31 @@
                                 'atrasado' => 'Atrasado',
                                 'analise' => 'Em análise',
                                 'quitado' => 'Quitado',
-                                default => str_replace('_', ' ', $loan['status'] ?? ''),
+                                default => str_replace('_', ' ', (string) ($loan['status'] ?? '')),
                             })
                             @php($vencimentoValue = (string) ($loan['vencimento'] ?? ''))
-                            @php($vencimentoDisplay = preg_match('/^\d{4}-\d{2}-\d{2}$/', $vencimentoValue) ? substr($vencimentoValue, 8, 2) . '/' . substr($vencimentoValue, 5, 2) . '/' . substr($vencimentoValue, 0, 4) : $vencimentoValue)
-                            <tr
-                                data-loan-row
-                                data-loan-id="{{ $loan->getKey() }}"
-                                data-cliente="{{ $loan['cliente'] }}"
-                                data-valor="{{ $loan['valor'] }}"
-                                data-parcelas="{{ $loan['parcelas'] }}"
-                                data-numero-parcelas="{{ $loan['numero_parcelas'] }}"
-                                data-vencimento="{{ $vencimentoValue }}"
-                                data-tipo="{{ $loan['tipo'] }}"
-                                data-status="{{ $loan['status'] }}"
-                                data-data-emprestimo="{{ $loan['data_emprestimo'] }}"
-                                data-taxa-juros="{{ $loan['taxa_juros'] }}"
-                                data-tipo-juros="{{ $loan['tipo_juros'] }}"
-                                data-intervalo="{{ $loan['intervalo'] }}"
-                                data-tipo-multa="{{ $loan['tipo_multa'] }}"
-                                data-valor-multa="{{ $loan['valor_multa'] }}"
-                                data-cobranca-multa="{{ $loan['cobranca_multa'] }}"
-                                data-cobrador="{{ $loan['cobrador'] ?? '' }}"
-                                data-excecoes-dia="{{ implode(',', (array) ($loan['excecoes_dia'] ?? [])) }}"
-                            >
+                            @php($vencimentoDisplay = $vencimentoValue && preg_match('/^\d{4}-\d{2}-\d{2}$/', $vencimentoValue) ? \Carbon\Carbon::parse($vencimentoValue)->format('d/m/Y') : $vencimentoValue)
+                            @php($loanJson = [
+                                'id' => (string) ($loan->getKey() ?? ''),
+                                'cliente' => (string) ($loan['cliente'] ?? ''),
+                                'valor' => (string) ($loan['valor'] ?? ''),
+                                'parcelas' => (string) ($loan['parcelas'] ?? ''),
+                                'numero_parcelas' => $loan['numero_parcelas'] ?? '',
+                                'vencimento' => $vencimentoValue,
+                                'vencimento_display' => $vencimentoDisplay,
+                                'tipo' => (string) ($loan['tipo'] ?? ''),
+                                'status' => (string) ($loan['status'] ?? ''),
+                                'data_emprestimo' => (string) ($loan['data_emprestimo'] ?? ''),
+                                'taxa_juros' => (string) ($loan['taxa_juros'] ?? ''),
+                                'tipo_juros' => (string) ($loan['tipo_juros'] ?? 'simples'),
+                                'intervalo' => (string) ($loan['intervalo'] ?? 'mensal'),
+                                'tipo_multa' => (string) ($loan['tipo_multa'] ?? 'percentual'),
+                                'valor_multa' => (string) ($loan['valor_multa'] ?? ''),
+                                'cobranca_multa' => (string) ($loan['cobranca_multa'] ?? 'automatica'),
+                                'cobrador' => (string) ($loan['cobrador'] ?? ''),
+                                'excecoes_dia' => array_values((array) ($loan['excecoes_dia'] ?? [])),
+                            ])
+                            <tr data-loan-row data-loan-id="{{ $loanJson['id'] }}" data-loan='@json($loanJson)'>
                                 <td class="font-medium">{{ $loan['cliente'] }}</td>
                                 <td class="text-amount">{{ $loan['valor'] }}</td>
                                 <td>{{ $loan['parcelas'] }}</td>

@@ -97,17 +97,21 @@
                                 'pendente' => 'Pendente',
                                 default => ucfirst($client['status'] ?? ''),
                             })
+                            @php($clientJson = [
+                                'id' => (string) ($client->getKey() ?? ''),
+                                'nome' => (string) ($client['nome'] ?? ''),
+                                'telefone' => (string) ($client['telefone'] ?? ''),
+                                'cpf' => (string) ($client['cpf'] ?? ''),
+                                'endereco' => (string) ($client['endereco'] ?? ''),
+                                'cidade' => (string) ($client['cidade'] ?? ''),
+                                'chave_pix' => (string) ($client['chave_pix'] ?? ''),
+                                'banco' => (string) ($client['banco'] ?? ''),
+                                'status' => (string) ($client['status'] ?? ''),
+                            ])
                             <tr
                                 data-client-row
-                                data-client-id="{{ (string) $client->getKey() }}"
-                                data-nome="{{ $client['nome'] }}"
-                                data-telefone="{{ $client['telefone'] }}"
-                                data-cpf="{{ $client['cpf'] }}"
-                                data-endereco="{{ $client['endereco'] }}"
-                                data-cidade="{{ $client['cidade'] }}"
-                                data-chave-pix="{{ $client['chave_pix'] }}"
-                                data-banco="{{ $client['banco'] }}"
-                                data-status="{{ $client['status'] }}"
+                                data-client-id="{{ $clientJson['id'] }}"
+                                data-client='@json($clientJson)'
                             >
                                 <td class="font-medium">{{ $client['nome'] }}</td>
                                 <td class="text-muted">{{ $client['telefone'] }}</td>

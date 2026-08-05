@@ -1,29 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const matchesSelector = (element, selector) => {
-        if (!(element instanceof Element)) {
-            return false;
-        }
-
-        const proto = Element.prototype;
-        const fn = proto.matches || proto.msMatchesSelector || proto.webkitMatchesSelector;
-        if (!fn) {
-            return false;
-        }
-
-        return fn.call(element, selector);
-    };
-
-    const closestSelector = (element, selector) => {
-        let current = element instanceof Element ? element : null;
-        while (current) {
-            if (matchesSelector(current, selector)) {
-                return current;
-            }
-            current = current.parentElement;
-        }
-        return null;
-    };
-
     const bindTap = (element, handler) => {
         if (!(element instanceof Element)) {
             return;
@@ -87,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             trigger.setAttribute('aria-label', ariaLabel.trim());
         }
 
-        const fieldWrapper = closestSelector(select, '.field');
+        const fieldWrapper = select.closest ? select.closest('.field') : null;
         const label = fieldWrapper ? fieldWrapper.querySelector(`label[for="${select.id}"]`) : null;
         const labelText = label && label.textContent ? label.textContent.trim() : '';
         if (labelText) {
@@ -244,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('click', (event) => {
         const target = event.target instanceof Element ? event.target : null;
-        if (target && closestSelector(target, '.select-ui')) {
+        if (target && target.closest && target.closest('.select-ui')) {
             return;
         }
         closeAllSelectMenus();
