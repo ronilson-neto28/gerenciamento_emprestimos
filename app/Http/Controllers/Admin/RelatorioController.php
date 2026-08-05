@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use MongoDB\BSON\ObjectId;
 
 class RelatorioController extends Controller
 {
@@ -39,9 +40,29 @@ class RelatorioController extends Controller
 
         $isAdmin = AdminAccess::isAdmin($authUser);
         $ownerId = AdminAccess::resolveOwnerId($authUser);
-        $filterUserId = $isAdmin
+        $filterCobradorId = $isAdmin
             ? trim((string) $request->query('cobrador', ''))
             : (string) ($authUser?->id ?? $authUser?->getKey() ?? '');
+
+        if ($ownerId === '') {
+            return view('admin.relatorios', [
+                'isAdmin' => $isAdmin,
+                'rows' => collect(),
+                'activities' => collect(),
+                'cobradores' => collect(),
+                'filters' => [
+                    'de' => $from,
+                    'ate' => $to,
+                    'cobrador' => $filterCobradorId,
+                ],
+                'summary' => [
+                    'operadores' => 0,
+                    'total_recebido' => $service->formatMoney(0),
+                    'recebimentos' => 0,
+                    'emprestimos' => 0,
+                ],
+            ]);
+        }
 
         $cobradores = User::query()
             ->where('role', 'cobrador')
@@ -50,85 +71,148 @@ class RelatorioController extends Controller
             ->get();
 
         $receiptsQuery = Recebimento::query()
+            ->where('owner_id', $ownerId)
             ->where('recebido_em', '>=', $from)
             ->where('recebido_em', '<=', $to)
             ->orderBy('recebido_em', 'desc');
 
-        if ($filterUserId !== '') {
-            $receiptsQuery->where('user_id', $filterUserId);
+        if ($filterCobradorId !== '') {
+            $receiptsQuery->where(function ($query) use ($filterCobradorId) {
+                $query->orWhere('cobrador_user_id', $filterCobradorId)
+                    ->orWhere('user_id', $filterCobradorId);
+            });
         }
 
         $receipts = $receiptsQuery->get();
-        $userIds = $receipts->pluck('user_id')
+        $loanIds = $receipts
+            ->pluck('emprestimo_id')
             ->filter(fn ($value) => is_string($value) && trim($value) !== '')
             ->values()
             ->unique()
             ->all();
 
-        if ($filterUserId !== '' && !in_array($filterUserId, $userIds, true)) {
-            $userIds[] = $filterUserId;
+        $loanIdValues = $loanIds;
+        foreach ($loanIds as $loanId) {
+            if (preg_match('/^[a-f0-9]{24}$/i', $loanId)) {
+                $loanIdValues[] = new ObjectId($loanId);
+            }
+        }
+
+        $loansById = Emprestimo::query()
+            ->where('owner_id', $ownerId)
+            ->when($loanIdValues !== [], fn ($query) => $query->whereIn('_id', $loanIdValues))
+            ->get()
+            ->keyBy(fn ($loan) => (string) ($loan->id ?? $loan->getKey() ?? ''));
+
+        $resolvedReceipts = $receipts->map(function ($receipt) use ($loansById) {
+            $cobradorUserId = trim((string) ($receipt['cobrador_user_id'] ?? ''));
+            $cobradorName = trim((string) ($receipt['cobrador'] ?? ''));
+
+            if ($cobradorUserId === '' || $cobradorName === '') {
+                $loanId = trim((string) ($receipt['emprestimo_id'] ?? ''));
+                $loan = $loanId !== '' ? $loansById->get($loanId) : null;
+                if ($loan) {
+                    if ($cobradorUserId === '') {
+                        $cobradorUserId = trim((string) ($loan['cobrador_user_id'] ?? ''));
+                    }
+                    if ($cobradorName === '') {
+                        $cobradorName = trim((string) ($loan['cobrador'] ?? ''));
+                    }
+                }
+            }
+
+            $receipt->setAttribute('resolved_cobrador_user_id', $cobradorUserId);
+            $receipt->setAttribute('resolved_cobrador', $cobradorName);
+
+            return $receipt;
+        });
+
+        $cobradorIds = $resolvedReceipts
+            ->pluck('resolved_cobrador_user_id')
+            ->filter(fn ($value) => is_string($value) && trim($value) !== '')
+            ->values()
+            ->unique()
+            ->all();
+
+        if ($filterCobradorId !== '' && !in_array($filterCobradorId, $cobradorIds, true)) {
+            $cobradorIds[] = $filterCobradorId;
+        }
+
+        $cobradorIdValues = $cobradorIds;
+        foreach ($cobradorIds as $cobradorId) {
+            if (preg_match('/^[a-f0-9]{24}$/i', $cobradorId)) {
+                $cobradorIdValues[] = new ObjectId($cobradorId);
+            }
         }
 
         $usersById = User::query()
             ->where('owner_id', $ownerId)
-            ->whereIn('_id', $userIds)
+            ->whereIn('_id', $cobradorIdValues)
             ->get()
             ->keyBy(fn ($user) => (string) ($user->id ?? $user->getKey() ?? ''));
 
         $loans = Emprestimo::query()
-            ->when($userIds !== [], fn ($query) => $query->whereIn('created_by', $userIds))
+            ->where('owner_id', $ownerId)
+            ->when($cobradorIdValues !== [], fn ($query) => $query->whereIn('cobrador_user_id', $cobradorIds))
             ->get()
             ->filter(function ($loan) use ($from, $to) {
                 $createdAt = $loan->created_at;
-
                 if (!$createdAt) {
                     return false;
                 }
-
                 $date = $createdAt->format('Y-m-d');
-
                 return $date >= $from && $date <= $to;
             });
 
-        $rows = collect($userIds)
-            ->map(function (string $userId) use ($receipts, $usersById, $loans, $service) {
-                $userReceipts = $receipts->filter(fn ($item) => (string) ($item['user_id'] ?? '') === $userId)->values();
-                $userLoans = $loans->filter(fn ($item) => (string) ($item['created_by'] ?? '') === $userId);
-                $operator = $usersById->get($userId);
+        $rows = collect($cobradorIds)
+            ->map(function (string $cobradorId) use ($resolvedReceipts, $usersById, $loans, $service) {
+                $cobradorReceipts = $resolvedReceipts
+                    ->filter(fn ($item) => (string) ($item['resolved_cobrador_user_id'] ?? '') === $cobradorId)
+                    ->values();
+                $cobradorLoans = $loans->filter(fn ($item) => (string) ($item['cobrador_user_id'] ?? '') === $cobradorId);
+                $operator = $usersById->get($cobradorId);
 
-                $totalCents = (int) $userReceipts->sum(function ($receipt) use ($service) {
+                $fallbackName = trim((string) ($cobradorReceipts->first()['resolved_cobrador'] ?? ''));
+                if ($fallbackName === '') {
+                    $fallbackName = 'Cobrador não identificado';
+                }
+
+                $totalCents = (int) $cobradorReceipts->sum(function ($receipt) use ($service) {
                     $cents = (int) ($receipt['valor_recebido_cents'] ?? 0);
-
                     return $cents > 0 ? $cents : $service->parseMoneyToCents((string) ($receipt['valor_recebido'] ?? ''));
                 });
 
                 return [
-                    'user_id' => $userId,
-                    'nome' => (string) ($operator['name'] ?? 'Operador sem nome'),
+                    'user_id' => $cobradorId,
+                    'nome' => (string) ($operator['name'] ?? $fallbackName),
                     'email' => (string) ($operator['email'] ?? ''),
                     'telefone' => (string) ($operator['phone'] ?? ''),
                     'total_recebido_cents' => $totalCents,
                     'total_recebido' => $service->formatMoney($totalCents),
-                    'recebimentos' => $userReceipts->count(),
-                    'emprestimos_criados' => $userLoans->count(),
+                    'recebimentos' => $cobradorReceipts->count(),
+                    'emprestimos_criados' => $cobradorLoans->count(),
                 ];
             })
             ->filter(fn (array $row) => $row['nome'] !== '' || $row['recebimentos'] > 0 || $row['emprestimos_criados'] > 0)
             ->sortByDesc('total_recebido_cents')
             ->values();
 
-        $activities = $receipts
+        $activities = $resolvedReceipts
             ->take(25)
             ->map(function ($receipt) use ($usersById, $service) {
-                $userId = (string) ($receipt['user_id'] ?? '');
-                $operator = $usersById->get($userId);
+                $cobradorId = (string) ($receipt['resolved_cobrador_user_id'] ?? '');
+                $operator = $cobradorId !== '' ? $usersById->get($cobradorId) : null;
                 $cents = (int) ($receipt['valor_recebido_cents'] ?? 0);
                 if ($cents <= 0) {
                     $cents = $service->parseMoneyToCents((string) ($receipt['valor_recebido'] ?? ''));
                 }
+                $fallbackName = trim((string) ($receipt['resolved_cobrador'] ?? ''));
+                if ($fallbackName === '') {
+                    $fallbackName = 'Cobrador não identificado';
+                }
 
                 return [
-                    'operador' => (string) ($operator['name'] ?? 'Usuário não identificado'),
+                    'operador' => (string) ($operator['name'] ?? $fallbackName),
                     'data' => (string) ($receipt['recebido_em'] ?? ''),
                     'tipo' => (string) ($receipt['tipo_baixa'] ?? (($receipt['somente_juros'] ?? false) ? 'juros' : 'total')),
                     'valor' => $service->formatMoney($cents),
@@ -145,7 +229,7 @@ class RelatorioController extends Controller
             'filters' => [
                 'de' => $from,
                 'ate' => $to,
-                'cobrador' => $filterUserId,
+                'cobrador' => $filterCobradorId,
             ],
             'summary' => [
                 'operadores' => $rows->count(),

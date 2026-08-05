@@ -73,6 +73,8 @@ class ReceiveController extends Controller
 
         $receiptType = $onlyInterest ? 'juros' : ($amountCents < $currentTotalCents ? 'parcial' : 'total');
         $authUserId = (string) ($request->user()?->id ?? $request->user()?->getKey() ?? '');
+        $assignedCobradorUserId = trim((string) ($loan['cobrador_user_id'] ?? ''));
+        $assignedCobradorName = trim((string) ($loan['cobrador'] ?? ''));
 
         Recebimento::create([
             'parcela_id' => (string) ($parcela->id ?? $parcela->getKey() ?? ''),
@@ -80,6 +82,8 @@ class ReceiveController extends Controller
             'cliente_id' => (string) ($loan['cliente_id'] ?? ''),
             'owner_id' => $ownerId,
             'user_id' => $authUserId,
+            'cobrador_user_id' => $assignedCobradorUserId,
+            'cobrador' => $assignedCobradorName,
             'valor_recebido' => $service->formatMoney($amountCents),
             'valor_recebido_cents' => $amountCents,
             'recebido_em' => $receiveDateIso,
