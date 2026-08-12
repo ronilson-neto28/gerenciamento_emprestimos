@@ -3,6 +3,155 @@ document.addEventListener('DOMContentLoaded', () => {
         const modal = document.getElementById('loan-modal');
         const installmentsModal = document.getElementById('installments-modal');
         const receiveModal = document.getElementById('receive-modal');
+        /* ============================================================
+           MODAL CUSTOMIZADO DE CONFIRMAÇÃO DE EXCLUSÃO
+           (substitui window.confirm do navegador — Design System KeneddyAdmin)
+           ============================================================ */
+        const deleteLoanModal = document.getElementById('delete-loan-modal');
+        const deleteLoanTargetNameEl = document.getElementById('delete-loan-target-name');
+        const deleteLoanBtnCancel = document.getElementById('delete-loan-btn-cancel');
+        const deleteLoanBtnSubmit = document.getElementById('delete-loan-btn-submit');
+        const closeDeleteLoanModalButtons = document.querySelectorAll('[data-close-delete-loan-modal]');
+        // Estado: qual linha/emprestimo está sendo excluído. Evita uso de window.confirm.
+        let pendingDeleteRow = null;
+        let pendingDeleteBtn = null;
+
+        const openDeleteLoanModal = (row, deleteBtn) => {
+            if (!deleteLoanModal || !row) {
+                return;
+            }
+            let loan = null;
+            try {
+                loan = row.dataset.loan ? JSON.parse(row.dataset.loan) : null;
+            } catch (error) {
+                loan = null;
+            }
+            const clientName = (loan && typeof loan.cliente === 'string' && loan.cliente.trim())
+                ? loan.cliente.trim()
+                : 'este empréstimo';
+            if (deleteLoanTargetNameEl) {
+                deleteLoanTargetNameEl.textContent = clientName;
+            }
+            // armazena estado atual
+            pendingDeleteRow = row;
+            pendingDeleteBtn = deleteBtn || null;
+            // zera o botão de submit (caso anterior tenha ficado disabled)
+            if (deleteLoanBtnSubmit instanceof HTMLButtonElement) {
+                deleteLoanBtnSubmit.disabled = false;
+                deleteLoanBtnSubmit.textContent = 'Sim, Excluir';
+            }
+            deleteLoanModal.dataset.targetId = row.dataset.loanId || '';
+            deleteLoanModal.dataset.targetName = clientName;
+            deleteLoanModal.classList.add('active');
+            deleteLoanModal.classList.add('is-open');
+            deleteLoanModal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            // foco no botão cancelar para evitar exclusão por acidente com Enter/space
+            try {
+                if (deleteLoanBtnCancel && typeof deleteLoanBtnCancel.focus === 'function') {
+                    deleteLoanBtnCancel.focus({ preventScroll: true });
+                }
+            } catch (error) { /* noop */ }
+        };
+
+        const closeDeleteLoanModal = () => {
+            if (!deleteLoanModal) {
+                return;
+            }
+            deleteLoanModal.classList.remove('active');
+            deleteLoanModal.classList.remove('is-open');
+            deleteLoanModal.setAttribute('aria-hidden', 'true');
+            deleteLoanModal.dataset.targetId = '';
+            deleteLoanModal.dataset.targetName = '';
+            pendingDeleteRow = null;
+            pendingDeleteBtn = null;
+            // Restaura body overflow somente se nenhum outro modal estiver aberto
+            const anyOpen = document.querySelector('.kmodal-overlay.active, .kmodal-overlay.is-open, .modal-overlay.active, .modal-overlay.is-open');
+            if (!anyOpen) {
+                document.body.style.overflow = '';
+            }
+        };
+
+        const executePendingDelete = async () => {
+            const row = pendingDeleteRow;
+            const deleteBtn = pendingDeleteBtn;
+            const loanId = row && row.dataset ? (row.dataset.loanId || '') : '';
+            if (!row || !loanId) {
+                closeDeleteLoanModal();
+                return;
+            }
+
+            // desativa o botão de confirmação durante a requisição
+            if (deleteLoanBtnSubmit instanceof HTMLButtonElement) {
+                deleteLoanBtnSubmit.disabled = true;
+                deleteLoanBtnSubmit.textContent = 'Excluindo...';
+            }
+            // desativa também o botão original da linha (para manter o comportamento antigo)
+            if (deleteBtn instanceof HTMLButtonElement) {
+                deleteBtn.disabled = true;
+            }
+
+            try {
+                await apiRequest(`/admin/api/emprestimos/${loanId}`, { method: 'DELETE' });
+                // Fecha modal ANTES de remover a linha (evita reflow enquanto overlay está ativo)
+                closeDeleteLoanModal();
+                row.remove();
+                updateLoanCounters();
+                showToast('Empréstimo excluído com sucesso.');
+            } catch (error) {
+                if (deleteLoanBtnSubmit instanceof HTMLButtonElement) {
+                    deleteLoanBtnSubmit.disabled = false;
+                    deleteLoanBtnSubmit.textContent = 'Sim, Excluir';
+                }
+                if (deleteBtn instanceof HTMLButtonElement) {
+                    deleteBtn.disabled = false;
+                }
+                showToast(error instanceof Error ? error.message : 'Erro ao excluir empréstimo.', 'danger');
+            }
+        };
+
+        // Bind global de todos os triggers de fechamento do modal de exclusão
+        if (closeDeleteLoanModalButtons && closeDeleteLoanModalButtons.length) {
+            closeDeleteLoanModalButtons.forEach((btn) => {
+                btn.addEventListener('click', (event) => {
+                    if (event && typeof event.preventDefault === 'function') {
+                        event.preventDefault();
+                    }
+                    closeDeleteLoanModal();
+                });
+            });
+        }
+        if (deleteLoanBtnCancel) {
+            deleteLoanBtnCancel.addEventListener('click', () => closeDeleteLoanModal());
+        }
+        if (deleteLoanBtnSubmit) {
+            deleteLoanBtnSubmit.addEventListener('click', () => {
+                void executePendingDelete();
+            });
+        }
+        // Clique fora do card (overlay): fecha.
+        if (deleteLoanModal) {
+            deleteLoanModal.addEventListener('click', (event) => {
+                const target = event && event.target instanceof Element ? event.target : null;
+                if (target && target === deleteLoanModal) {
+                    closeDeleteLoanModal();
+                }
+            });
+        }
+        // ESC fecha o modal de exclusão
+        document.addEventListener('keydown', (event) => {
+            if (!event) {
+                return;
+            }
+            if (event.key === 'Escape'
+                && deleteLoanModal
+                && deleteLoanModal.getAttribute('aria-hidden') === 'false') {
+                event.preventDefault();
+                event.stopPropagation();
+                closeDeleteLoanModal();
+            }
+        }, true);
+
         const openButton = document.querySelector('[data-open-loan-modal]');
         const closeButtons = document.querySelectorAll('[data-close-loan-modal]');
         const closeInstallmentsButtons = document.querySelectorAll('[data-close-installments-modal]');
@@ -657,23 +806,81 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            cells[0].textContent = loan.cliente || '';
+            // === CELL 0 (CLIENTE): Preserva estrutura AVATAR + NOME (não apaga o flex do avatar!) ===
+            const clienteNameEl = cells[0].querySelector('.client-name, .kcliente-nome, .kcliente-nome-emprestimo');
+            const clienteAvatarEl = cells[0].querySelector('.client-avatar, .kavatar, .kavatar-emprestimo, .kavatar-cliente');
+            const clienteValue = loan.cliente || '';
+
+            if (clienteNameEl) {
+                // Caminho FELIZ: estrutura existe, atualiza só textos
+                clienteNameEl.textContent = clienteValue;
+                if (clienteAvatarEl && clienteValue) {
+                    // Atualiza iniciais do avatar (cálculo idêntico ao Blade)
+                    const partesNome = clienteValue.trim().split(/\s+/).filter(Boolean);
+                    const primeiraLetra = partesNome[0] ? partesNome[0].charAt(0).toUpperCase() : '?';
+                    const ultimaLetra = partesNome.length > 1 ? partesNome[partesNome.length - 1].charAt(0).toUpperCase() : '';
+                    clienteAvatarEl.textContent = primeiraLetra + ultimaLetra;
+                }
+            } else {
+                // Fallback: estrutura não existe, recria do zero igual ao Blade
+                const partesNomeFb = clienteValue.trim().split(/\s+/).filter(Boolean);
+                const primeiraLetraFb = partesNomeFb[0] ? partesNomeFb[0].charAt(0).toUpperCase() : '?';
+                const ultimaLetraFb = partesNomeFb.length > 1 ? partesNomeFb[partesNomeFb.length - 1].charAt(0).toUpperCase() : '';
+                const iniciaisFb = primeiraLetraFb + ultimaLetraFb;
+                const palette = ['kavatar-indigo', 'kavatar-emerald', 'kavatar-amber', 'kavatar-purple', 'kavatar-sky', 'kavatar-rose'];
+                let colorIdx = 0;
+                try {
+                    const rowIdxAttr = row.dataset && row.dataset.loanId ? row.dataset.loanId : clienteValue;
+                    for (let i = 0; i < rowIdxAttr.length; i++) colorIdx = (colorIdx + rowIdxAttr.charCodeAt(i)) % palette.length;
+                } catch (e) { /* noop */ }
+                const avatarClassFb = palette[colorIdx] || 'kavatar-indigo';
+
+                cells[0].innerHTML = `
+                    <div class="kcell-cliente kcell-emprestimo-cliente client-cell">
+                        <span class="kavatar kavatar-cliente kavatar-emprestimo client-avatar ${avatarClassFb}">${iniciaisFb}</span>
+                        <div class="kcell-cliente-meta kcell-emprestimo-meta client-cell-meta">
+                            <div class="kcliente-nome kcliente-nome-emprestimo client-name">${clienteValue}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
             cells[1].textContent = loan.valor || '';
             cells[2].textContent = loan.parcelas || '';
             cells[3].textContent = loan.vencimento_display || isoToDisplayDate(loan.vencimento || '') || '';
-            const typeBadge = cells[4].querySelector('.type-badge');
+            const typeBadge = cells[4].querySelector('.type-badge, .ktype-badge, .ktype-badge-emprestimo');
             if (typeBadge) {
                 typeBadge.textContent = loan.tipo || '';
             } else {
-                cells[4].innerHTML = `<span class="type-badge">${loan.tipo || ''}</span>`;
+                cells[4].innerHTML = `<span class="ktype-badge ktype-badge-emprestimo type-badge">${loan.tipo || ''}</span>`;
             }
 
             const statusLabel = getLoanStatusLabel(loan.status);
-            cells[5].innerHTML = `
-                <span class="status-badge status-${loan.status || ''}">
-                    <span class="status-dot" aria-hidden="true"></span> ${statusLabel}
-                </span>
-            `;
+            const statusClass = loan.status || 'em_dia';
+            const statusPill = cells[5].querySelector('.status-badge, .kstatus-pill, .kstatus-pill-emprestimo');
+            const statusDot = cells[5].querySelector('.status-dot, .kstatus-dot, .kstatus-dot-' + statusClass);
+            const statusClassesLegadas = `kstatus-pill kstatus-pill-emprestimo kstatus-pill-${statusClass} status-badge status-${statusClass}`;
+            const dotClassesLegadas = `kstatus-dot kstatus-dot-${statusClass} status-dot`;
+
+            if (statusPill) {
+                statusPill.className = statusClassesLegadas;
+                statusPill.childNodes.forEach((n) => { if (n.nodeType === Node.TEXT_NODE) n.remove(); });
+                let dot = statusPill.querySelector('.status-dot, .kstatus-dot');
+                if (!dot) {
+                    dot = document.createElement('span');
+                    statusPill.insertBefore(dot, statusPill.firstChild);
+                }
+                dot.className = dotClassesLegadas;
+                dot.setAttribute('aria-hidden', 'true');
+                const labelNode = document.createTextNode(' ' + statusLabel);
+                statusPill.appendChild(labelNode);
+            } else {
+                cells[5].innerHTML = `
+                    <span class="${statusClassesLegadas}">
+                        <span class="${dotClassesLegadas}" aria-hidden="true"></span> ${statusLabel}
+                    </span>
+                `;
+            }
         };
 
         const bindLoanRowActions = (row) => {
@@ -699,33 +906,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const deleteBtn = row.querySelector('[data-delete-loan]');
             if (deleteBtn) {
-                deleteBtn.addEventListener('click', async () => {
+                deleteBtn.addEventListener('click', () => {
                     const loanId = row.dataset.loanId || '';
                     if (!loanId) {
                         return;
                     }
-
-                    const clientName = (loan && loan.cliente) || 'este emprestimo';
-                    const confirmed = window.confirm(`Deseja excluir o emprestimo de ${clientName}?`);
-                    if (!confirmed) {
-                        return;
-                    }
-
-                    if (deleteBtn instanceof HTMLButtonElement) {
-                        deleteBtn.disabled = true;
-                    }
-
-                    try {
-                        await apiRequest(`/admin/api/emprestimos/${loanId}`, { method: 'DELETE' });
-                        row.remove();
-                        updateLoanCounters();
-                        showToast('Empréstimo excluído com sucesso.');
-                    } catch (error) {
-                        showToast(error instanceof Error ? error.message : 'Erro ao excluir empréstimo.', 'danger');
-                        if (deleteBtn instanceof HTMLButtonElement) {
-                            deleteBtn.disabled = false;
-                        }
-                    }
+                    // —— SUBSTITUI window.confirm PELO MODAL CUSTOMIZADO PREMIUM ——
+                    // O window.confirm() foi REMOVIDO para não violar a regra
+                    // "Proibido usar window.confirm: utilizar modal de confirmação
+                    // customizado do projeto." (conforme Project Memory).
+                    openDeleteLoanModal(row, deleteBtn);
                 });
             }
 

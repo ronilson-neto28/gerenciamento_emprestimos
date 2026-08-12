@@ -54,6 +54,8 @@ class ClienteController extends Controller
                 'total' => (clone $summaryQuery)->count(),
                 'filtrados' => $filteredClients->count(),
                 'ativos' => (clone $summaryQuery)->where('status', 'ativo')->count(),
+                'pendentes' => (clone $summaryQuery)->where('status', 'pendente')->count(),
+                'inativos' => (clone $summaryQuery)->where('status', 'inativo')->count(),
             ],
         ]);
     }

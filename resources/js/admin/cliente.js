@@ -5,12 +5,18 @@ document.addEventListener('DOMContentLoaded', () => {
     window.__keneddyClientesInitialized = true;
 
     const modal = document.getElementById('client-modal');
+    const deleteModal = document.getElementById('client-delete-modal');
     const openButton = document.querySelector('[data-open-client-modal]');
     const closeButtons = document.querySelectorAll('[data-close-client-modal]');
+    const closeDeleteButtons = document.querySelectorAll('[data-close-delete-modal]');
+    const confirmDeleteButton = document.getElementById('confirm-delete-client');
+    const deleteClientNameEl = document.querySelector('.kdelete-client-name');
     const form = document.getElementById('client-form');
     const modalTitle = document.getElementById('client-modal-title');
     const modalSubtitle = document.getElementById('client-modal-subtitle');
     const submitButton = document.getElementById('client-submit-button');
+
+    let pendingDeleteId = null;
 
     const fields = {
         nome: document.getElementById('nome'),
@@ -258,6 +264,29 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.overflow = '';
     };
 
+    const openDeleteModal = (clientName, id) => {
+        if (deleteClientNameEl) {
+            deleteClientNameEl.textContent = clientName;
+        }
+        pendingDeleteId = id;
+        if (deleteModal) {
+            deleteModal.classList.add('active');
+            deleteModal.classList.add('is-open');
+            deleteModal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        }
+    };
+
+    const closeDeleteModal = () => {
+        pendingDeleteId = null;
+        if (deleteModal) {
+            deleteModal.classList.remove('active');
+            deleteModal.classList.remove('is-open');
+            deleteModal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+    };
+
     let isSubmitting = false;
     const setSubmittingState = (submitting) => {
         isSubmitting = submitting;
@@ -275,6 +304,31 @@ document.addEventListener('DOMContentLoaded', () => {
     closeButtons.forEach((button) => {
         button.addEventListener('click', closeModal);
     });
+
+    closeDeleteButtons.forEach((button) => {
+        button.addEventListener('click', closeDeleteModal);
+    });
+
+    if (confirmDeleteButton) {
+        confirmDeleteButton.addEventListener('click', async () => {
+            const id = pendingDeleteId;
+            if (!id) {
+                closeDeleteModal();
+                return;
+            }
+
+            try {
+                confirmDeleteButton.disabled = true;
+                await apiRequest(`/admin/api/clientes/${encodeURIComponent(id)}`, { method: 'DELETE' });
+                closeDeleteModal();
+                showToast('Cliente excluído com sucesso.');
+                window.setTimeout(() => window.location.reload(), 400);
+            } catch (error) {
+                confirmDeleteButton.disabled = false;
+                showToast(error.message, 'danger');
+            }
+        });
+    }
 
     document.addEventListener('click', async (event) => {
         const target = event.target;
@@ -297,23 +351,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const id = row.dataset.clientId || '';
             if (!id) {
-                alert('Cliente inválido para exclusão.');
+                showToast('Cliente inválido para exclusão.', 'danger');
                 return;
             }
 
             const client = getClientFromRow(row);
             const clientName = client && client.nome ? String(client.nome) : 'este cliente';
-            const confirmed = window.confirm(`Deseja excluir ${clientName}?`);
-            if (!confirmed) {
-                return;
-            }
-
-            try {
-                await apiRequest(`/admin/api/clientes/${encodeURIComponent(id)}`, { method: 'DELETE' });
-                window.location.reload();
-            } catch (error) {
-                alert(error.message);
-            }
+            openDeleteModal(clientName, id);
+            return;
         }
     });
 
@@ -323,9 +368,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    if (deleteModal) {
+        deleteModal.addEventListener('click', (event) => {
+            if (event.target === deleteModal) {
+                closeDeleteModal();
+            }
+        });
+    }
+
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && modal.classList.contains('active')) {
-            closeModal();
+        if (event.key === 'Escape') {
+            if (modal.classList.contains('active')) {
+                closeModal();
+            }
+            if (deleteModal && deleteModal.classList.contains('active')) {
+                closeDeleteModal();
+            }
         }
     });
 
